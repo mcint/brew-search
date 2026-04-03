@@ -1,9 +1,9 @@
-class BrewSearch < Formula
+class BrewHopSearch < Formula
   include Language::Python::Virtualenv
 
   desc "Fast offline-first search of Homebrew formulae, casks, taps, and installed packages"
-  homepage "https://github.com/steward/brew-search"
-  url "https://files.pythonhosted.org/packages/source/b/brew-search/brew_search-0.2.0.tar.gz"
+  homepage "https://github.com/mcint/brew-hop-search"
+  url "https://files.pythonhosted.org/packages/source/b/brew-hop-search/brew_hop_search-0.2.0.tar.gz"
   sha256 "PLACEHOLDER"
   license "MIT"
 
@@ -19,6 +19,6 @@ class BrewSearch < Formula
   end
 
   test do
-    assert_match "brew-search", shell_output("#{bin}/brew-search --help")
+    assert_match "brew-hop-search", shell_output("#{bin}/brew-hop-search --help")
   end
 end

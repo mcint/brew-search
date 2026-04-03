@@ -13,7 +13,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh
 
 Encrypt your report with:
 ```sh
-echo "report text" | age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") | mail -s "brew-search security" security@pkgs.mcint.io
+echo "report text" | age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") | mail -s "brew-hop-search security" security@pkgs.mcint.io
 ```
 
 Or attach a file:
@@ -25,7 +25,7 @@ We will acknowledge receipt within 72 hours and aim to provide an initial assess
 
 ## Threat Model & Risk Analysis
 
-brew-search has a **low overall risk profile** due to its narrow scope: it fetches well-known public indexes, parses structured data, and writes to a local SQLite database. There is no authentication, no credential handling, and no outbound data beyond HTTP GETs.
+brew-hop-search has a **low overall risk profile** due to its narrow scope: it fetches well-known public indexes, parses structured data, and writes to a local SQLite database. There is no authentication, no credential handling, and no outbound data beyond HTTP GETs.
 
 ### Network surface
 
@@ -33,7 +33,7 @@ brew-search has a **low overall risk profile** due to its narrow scope: it fetch
 |----------|---------|-------|
 | `formulae.brew.sh/api/formula.json` | Official Homebrew formula index | First-party, HTTPS |
 | `formulae.brew.sh/api/cask.json` | Official Homebrew cask index | First-party, HTTPS |
-| `pypi.org/pypi/brew-search/json` | Version check (read-only) | Well-known registry, HTTPS |
+| `pypi.org/pypi/brew-hop-search/json` | Version check (read-only) | Well-known registry, HTTPS |
 
 All URLs are hardcoded constants — no user-supplied URLs are fetched in the default code path.
 
@@ -47,7 +47,7 @@ All URLs are hardcoded constants — no user-supplied URLs are fetched in the de
 
 ### Tap .rb parsing (medium risk)
 
-Tap formula files are Ruby source fetched from third-party git repositories. brew-search parses them with simple regexes (`desc`, `homepage`, `version`, `url` fields) — it does **not** execute Ruby or eval any content. The parsed strings are stored in SQLite via parameterized queries (sqlite-utils), so SQL injection via crafted `.rb` content is not feasible.
+Tap formula files are Ruby source fetched from third-party git repositories. brew-hop-search parses them with simple regexes (`desc`, `homepage`, `version`, `url` fields) — it does **not** execute Ruby or eval any content. The parsed strings are stored in SQLite via parameterized queries (sqlite-utils), so SQL injection via crafted `.rb` content is not feasible.
 
 The residual risk is:
 - A malicious tap could craft `.rb` content that produces misleading search results (e.g., a `desc` claiming to be a different tool). This is cosmetic, not exploitable.
@@ -55,14 +55,14 @@ The residual risk is:
 
 ### SQLite database
 
-The FTS5 database at `~/.cache/brew-search/brew-search.db` is user-local, written with parameterized queries via sqlite-utils, and contains only public package metadata. It has no sensitive content and can be safely deleted at any time (`brew-search --refresh` rebuilds it).
+The FTS5 database at `~/.cache/brew-hop-search/brew-hop-search.db` is user-local, written with parameterized queries via sqlite-utils, and contains only public package metadata. It has no sensitive content and can be safely deleted at any time (`brew-hop-search --refresh` rebuilds it).
 
 ### Subprocess calls
 
-brew-search invokes:
+brew-hop-search invokes:
 - `brew --repository`, `brew --cache` — path discovery, no user input
 - `brew info --json=v2 --installed` — installed package listing
-- `sys.executable -m brew_search.cli` / `sys.executable -m brew_search._bg_installed` — background self-invocation
+- `sys.executable -m brew_hop_search.cli` / `sys.executable -m brew_hop_search._bg_installed` — background self-invocation
 
 No user-supplied strings are interpolated into subprocess arguments.
 

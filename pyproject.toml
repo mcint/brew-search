@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "brew-search"
+name = "brew-hop-search"
 version = "0.2.0"
 description = "Fast offline-first search of Homebrew formulae, casks, taps, and installed packages"
 readme = "README.md"
@@ -23,10 +23,10 @@ classifiers = [
 dependencies = ["sqlite-utils"]
 
 [project.scripts]
-brew-search = "brew_search.cli:main"
+brew-hop-search = "brew_hop_search.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mcint/brew-search"
+Homepage = "https://github.com/mcint/brew-hop-search"
 
 [[tool.uv.index]]
 name = "testpypi"

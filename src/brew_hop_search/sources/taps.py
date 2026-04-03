@@ -7,8 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from brew_search.cache import get_db, import_to_db, table_age, table_exists
-from brew_search.display import dim, red
+from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
+from brew_hop_search.display import dim, red
 
 DEFAULT_STALE = 3600  # 1 hour
 

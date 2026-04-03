@@ -7,8 +7,8 @@ from pathlib import Path
 
 import sqlite_utils
 
-CACHE_DIR = Path.home() / ".cache" / "brew-search"
-DB_PATH = CACHE_DIR / "brew-search.db"
+CACHE_DIR = Path.home() / ".cache" / "brew-hop-search"
+DB_PATH = CACHE_DIR / "brew-hop-search.db"
 
 
 def get_db() -> sqlite_utils.Database:

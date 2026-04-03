@@ -1,4 +1,4 @@
-"""Check PyPI for newer versions of brew-search, piggyback on existing network ops."""
+"""Check PyPI for newer versions of brew-hop-search, piggyback on existing network ops."""
 from __future__ import annotations
 
 import json
@@ -6,11 +6,11 @@ import sys
 import time
 from urllib.request import Request, urlopen
 
-from brew_search import __version__
-from brew_search.cache import get_db
-from brew_search.display import dim, yellow
+from brew_hop_search import __version__
+from brew_hop_search.cache import get_db
+from brew_hop_search.display import dim, yellow
 
-PYPI_URL = "https://pypi.org/pypi/brew-search/json"
+PYPI_URL = "https://pypi.org/pypi/brew-hop-search/json"
 CHECK_INTERVAL = 4 * 3600  # 4 hours
 META_KEY = "version_check"
 
@@ -59,7 +59,7 @@ def check_if_due() -> None:
         if _last_check_age() < CHECK_INTERVAL:
             return
 
-        req = Request(PYPI_URL, headers={"User-Agent": "brew-search-cli/1.0"})
+        req = Request(PYPI_URL, headers={"User-Agent": "brew-hop-search-cli/1.0"})
         with urlopen(req, timeout=5) as r:
             data = json.loads(r.read())
 
@@ -71,9 +71,9 @@ def check_if_due() -> None:
 
         if _parse_version(latest) > _parse_version(__version__):
             print(
-                dim(f"  brew-search {yellow(latest)} available "
+                dim(f"  brew-hop-search {yellow(latest)} available "
                     f"(current: {__version__})  "
-                    f"pip install -U brew-search"),
+                    f"pip install -U brew-hop-search"),
                 file=sys.stderr,
             )
     except Exception:

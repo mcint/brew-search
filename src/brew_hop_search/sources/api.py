@@ -7,10 +7,10 @@ import sys
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from brew_search.cache import (
+from brew_hop_search.cache import (
     get_db, import_to_db, save_raw_json, table_age, table_exists,
 )
-from brew_search.display import dim, red
+from brew_hop_search.display import dim, red
 
 FORMULA_URL = "https://formulae.brew.sh/api/formula.json"
 CASK_URL = "https://formulae.brew.sh/api/cask.json"
@@ -18,7 +18,7 @@ TIMEOUT = 10
 
 
 def fetch(url: str):
-    req = Request(url, headers={"User-Agent": "brew-search-cli/1.0"})
+    req = Request(url, headers={"User-Agent": "brew-hop-search-cli/1.0"})
     with urlopen(req, timeout=TIMEOUT) as r:
         return json.loads(r.read())
 
@@ -54,7 +54,7 @@ def refresh(kind: str, url: str, silent: bool = False) -> bool:
     if not silent:
         print(dim(f"  \u21bb fetching {kind} index \u2026"), file=sys.stderr)
     try:
-        from brew_search.version_check import check_if_due
+        from brew_hop_search.version_check import check_if_due
         check_if_due()
         data = fetch(url)
         save_raw_json(kind, data)
@@ -77,7 +77,7 @@ def refresh(kind: str, url: str, silent: bool = False) -> bool:
 def background_refresh(kind: str, url: str) -> None:
     try:
         subprocess.Popen(
-            [sys.executable, "-m", "brew_search.cli", "--_bg-refresh", kind, url],
+            [sys.executable, "-m", "brew_hop_search.cli", "--_bg-refresh", kind, url],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,

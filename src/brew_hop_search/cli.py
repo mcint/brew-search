@@ -1,4 +1,4 @@
-"""CLI entry point for brew-search."""
+"""CLI entry point for brew-hop-search."""
 from __future__ import annotations
 
 import argparse
@@ -9,17 +9,17 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
-from brew_search.cache import (
+from brew_hop_search.cache import (
     DB_PATH, CACHE_DIR, get_db, json_path, table_age, table_count,
     table_exists, table_updated_at,
 )
-from brew_search.display import (
+from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
     display_section, display_tap_section, display_installed_section,
     output_grep, output_json, fmt_duration,
 )
-from brew_search.search import search
-from brew_search.sources import api, installed, taps, local
+from brew_hop_search.search import search
+from brew_hop_search.sources import api, installed, taps, local
 
 DEFAULT_STALE = 6 * 3600  # 6 hours
 
@@ -155,7 +155,7 @@ def show_cache_status_json() -> None:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        prog="brew-search",
+        prog="brew-hop-search",
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -335,7 +335,7 @@ def _maybe_async_installed_refresh():
         if not table_exists(db, "installed_formula") or table_age(db, "installed_formula") > installed.DEFAULT_STALE:
             import subprocess
             subprocess.Popen(
-                [sys.executable, "-m", "brew_search._bg_installed"],
+                [sys.executable, "-m", "brew_hop_search._bg_installed"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
