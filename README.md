@@ -4,9 +4,9 @@ Fast offline-first search of Homebrew formulae, casks, taps, and installed packa
 
 Built on SQLite + FTS5 for instant local search with smart caching.
 
-[GitHub](https://github.com/steward/brew-search) ·
+[GitHub](https://github.com/mcint/brew-search) ·
 [PyPI](https://pypi.org/project/brew-search/) ·
-[Brew Tap](https://github.com/steward/homebrew-brew-search/blob/main/Formula/brew-search.rb)
+[Brew Tap](https://github.com/mcint/homebrew-brew-search/blob/main/Formula/brew-search.rb)
 
 ## Install
 
@@ -16,7 +16,7 @@ uv tool install brew-search     # or: pip install brew-search
 uvx brew-search python          # one-shot without install
 
 # Homebrew tap
-brew tap steward/brew-search
+brew tap mcint/brew-search
 brew install brew-search
 ```
 

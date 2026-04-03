@@ -6,19 +6,19 @@ Reports are accepted via age-encrypted email.
 
 **Email:** security@pkgs.mcint.io
 
-**age public key:**
+**SSH public key (age-compatible):**
 ```
-age1TODO_REPLACE_WITH_YOUR_AGE_PUBLIC_KEY
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh
 ```
 
 Encrypt your report with:
 ```sh
-echo "report text" | age -r age1TODO... | mail -s "brew-search security" security@pkgs.mcint.io
+echo "report text" | age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") | mail -s "brew-search security" security@pkgs.mcint.io
 ```
 
 Or attach a file:
 ```sh
-age -r age1TODO... -o report.age report.txt
+age -R <(echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILLVqq1bzNWW4Z+XcAVUeoDhwb/sXw+d7O65QezsXnGh") -o report.age report.txt
 ```
 
 We will acknowledge receipt within 72 hours and aim to provide an initial assessment within 7 days.
