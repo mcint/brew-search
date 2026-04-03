@@ -22,6 +22,9 @@ classifiers = [
 ]
 dependencies = ["sqlite-utils"]
 
+[dependency-groups]
+dev = ["pytest"]
+
 [project.scripts]
 brew-hop-search = "brew_hop_search.cli:main"
 

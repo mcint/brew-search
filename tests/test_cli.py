@@ -1,0 +1,108 @@
+"""Snapshot tests for brew-hop-search CLI output."""
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+
+import pytest
+
+from tests.snap import snap  # noqa: F401 (fixture)
+
+
+def run(*args: str) -> str:
+    """Run brew-hop-search and return stdout, stripping ANSI codes."""
+    result = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", *args],
+        capture_output=True, text=True, timeout=30,
+    )
+    # Strip ANSI escape codes for stable snapshots
+    clean = re.sub(r"\033\[[0-9;]*m", "", result.stdout + result.stderr)
+    return clean
+
+
+def test_help(snap):
+    snap.assert_match(run("--help"))
+
+
+def test_version_importable():
+    from brew_hop_search import __version__
+    assert re.match(r"\d+\.\d+\.\d+", __version__)
+
+
+def test_cache_status_json():
+    """Cache status JSON should be valid and have expected keys."""
+    import json
+    output = run("-C", "--json")
+    data = json.loads(output)
+    assert "cache_dir" in data
+    assert "db_path" in data
+    assert "sources" in data
+
+
+def test_duration_parsing():
+    from brew_hop_search.cli import parse_duration
+    assert parse_duration("30m") == 1800
+    assert parse_duration("6h") == 21600
+    assert parse_duration("1d") == 86400
+    assert parse_duration("1h30m") == 5400
+    assert parse_duration("90") == 90
+
+
+def test_duration_formatting():
+    from brew_hop_search.display import fmt_duration
+    assert fmt_duration(30) == "30s"
+    assert fmt_duration(90) == "1m30s"
+    assert fmt_duration(3600) == "1h"
+    assert fmt_duration(3660) == "1h1m"
+    assert fmt_duration(86400) == "1d"
+    assert fmt_duration(float("inf")) == "never"
+
+
+def test_scoring():
+    from brew_hop_search.search import score
+    # Exact match
+    assert score("python", "", ["python"]) == 100
+    # Prefix match
+    assert score("python3", "", ["python"]) == 60
+    # Substring match
+    assert score("cpython", "", ["python"]) == 30
+    # Description match
+    assert score("foo", "uses python", ["python"]) == 10
+    # No match
+    assert score("foo", "bar", ["python"]) == 0
+    # All terms must match
+    assert score("python", "language", ["python", "java"]) == 0
+
+
+def test_fts_query():
+    from brew_hop_search.search import fts_query
+    assert fts_query(["python"]) == '"python"*'
+    assert fts_query(["python", "build"]) == '"python"* AND "build"*'
+
+
+def test_rb_parser():
+    """Test the lightweight Ruby formula parser."""
+    import tempfile
+    from pathlib import Path
+    from brew_hop_search.sources.taps import parse_rb
+
+    rb_content = '''
+cask "test-app" do
+  version "1.2.3"
+  desc "A test application"
+  homepage "https://example.com"
+  url "https://example.com/download/v1.2.3/test.dmg"
+end
+'''
+    with tempfile.NamedTemporaryFile(suffix=".rb", mode="w", delete=False) as f:
+        f.write(rb_content)
+        f.flush()
+        result = parse_rb(Path(f.name), "test/tap")
+
+    assert result is not None
+    assert result["name"] == Path(f.name).stem
+    assert result["version"] == "1.2.3"
+    assert result["desc"] == "A test application"
+    assert result["homepage"] == "https://example.com"
+    assert result["tap"] == "test/tap"

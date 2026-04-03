@@ -1,0 +1,25 @@
+usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-C]
+                       [--stale DUR] [--fresh DUR] [-n N] [--json] [-g]
+                       [query]
+
+Fast offline-first Homebrew formula/cask search.
+
+positional arguments:
+  query                 Search query
+
+options:
+  -h, --help            show this help message and exit
+  --refresh             Force synchronous re-fetch before searching
+  -f, --formulae, --formula
+                        Search formulae only
+  -c, --casks, --cask   Search casks only
+  -i, --installed       Search only installed packages
+  -t, --taps            Also search formulae/casks from tapped repos
+  -L, --local           Search brew's local API cache (offline)
+  -C, --cache           Show cache status and exit
+  --stale DUR           Background refresh if cache older than DUR (default:
+                        6h)
+  --fresh DUR           Force synchronous refresh if cache older than DUR
+  -n N, --limit N       Max results per section (default 20)
+  --json                Output raw JSON
+  -g, --grep            Greppable output: slug\tversion\turl\n description
