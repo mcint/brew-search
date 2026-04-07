@@ -179,8 +179,8 @@ def _show_history(name: str, as_json: bool = False) -> None:
 # ── version display ─────────────────────────────────────────────────────────
 
 def _show_version(level: int) -> None:
-    from brew_hop_search import __version__
-    print(f"brew-hop-search {__version__}")
+    from brew_hop_search import __version__, version_info
+    print(f"brew-hop-search {version_info()}")
     if level >= 2:
         # Show git commit log for this package
         import subprocess
