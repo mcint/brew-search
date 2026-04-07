@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 from brew_hop_search.cache import (
     get_db, import_to_db, save_raw_json, table_age, table_exists,
 )
-from brew_hop_search.display import dim, red
+from brew_hop_search.display import dim, red, status_line
 
 FORMULA_URL = "https://formulae.brew.sh/api/formula.json"
 CASK_URL = "https://formulae.brew.sh/api/cask.json"
@@ -51,13 +51,18 @@ def _cask_rows(data: list[dict]) -> list[dict]:
 
 
 def refresh(kind: str, url: str, silent: bool = False) -> bool:
+    prefix = f"[{kind}]"
     if not silent:
-        print(dim(f"  \u21bb fetching {kind} index \u2026"), file=sys.stderr)
+        status_line(dim(f"  {prefix} fetching index \u2026"))
     try:
         from brew_hop_search.version_check import check_if_due
         check_if_due()
         data = fetch(url)
+        if not silent:
+            status_line(dim(f"  {prefix} saving {len(data)} entries \u2026"))
         save_raw_json(kind, data)
+        if not silent:
+            status_line(dim(f"  {prefix} indexing \u2026"))
         db = get_db()
         if kind == "formula":
             rows = _formula_rows(data)
@@ -66,11 +71,11 @@ def refresh(kind: str, url: str, silent: bool = False) -> bool:
             rows = _cask_rows(data)
             import_to_db(db, kind, rows, list(rows[0].keys()), "token", ["token", "name", "desc"])
         if not silent:
-            print(dim(f"  \u2713 cached {len(data)} {kind}s"), file=sys.stderr)
+            status_line(dim(f"  {prefix} \u2713 cached {len(data)} entries"), done=True)
         return True
     except (URLError, Exception) as e:
         if not silent:
-            print(red(f"  \u2717 fetch failed: {e}"), file=sys.stderr)
+            status_line(red(f"  {prefix} \u2717 fetch failed: {e}"), done=True)
         return False
 
 

@@ -16,7 +16,7 @@ from brew_hop_search.cache import (
 from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
     display_section, display_tap_section, display_installed_section,
-    output_grep, output_json, fmt_duration,
+    output_grep, output_json, fmt_duration, status_line,
 )
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
@@ -208,6 +208,11 @@ def main(argv=None):
 
     stale = args.stale if args.stale is not None else DEFAULT_STALE
     fresh = args.fresh
+
+    # Show app name on first run (no DB yet)
+    if not DB_PATH.exists():
+        from brew_hop_search import __version__
+        status_line(dim(f"  brew-hop-search v{__version__} — first run, building index \u2026"), done=True)
 
     # ── determine search sources ──
     # Default: search remote API index (formula + cask)

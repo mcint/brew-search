@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
-from brew_hop_search.display import dim, red
+from brew_hop_search.display import dim, red, status_line
 
 DEFAULT_STALE = 3600  # re-index installed packages if older than 1h
 
@@ -23,14 +23,17 @@ def _brew_installed_json() -> dict:
 
 
 def refresh(silent: bool = False) -> bool:
+    prefix = "[installed]"
     if not silent:
-        print(dim("  \u21bb indexing installed packages \u2026"), file=sys.stderr)
+        status_line(dim(f"  {prefix} querying brew \u2026"))
     try:
         data = _brew_installed_json()
         db = get_db()
 
         # Formulae
         formulae = data.get("formulae", [])
+        if not silent:
+            status_line(dim(f"  {prefix} indexing {len(formulae)} formulae \u2026"))
         formula_rows = [
             {
                 "name": item.get("name", ""),
@@ -47,6 +50,8 @@ def refresh(silent: bool = False) -> bool:
 
         # Casks
         casks = data.get("casks", [])
+        if not silent:
+            status_line(dim(f"  {prefix} indexing {len(casks)} casks \u2026"))
         cask_rows = [
             {
                 "token": item.get("token", ""),
@@ -63,11 +68,11 @@ def refresh(silent: bool = False) -> bool:
                       "token", ["token", "name", "desc"])
 
         if not silent:
-            print(dim(f"  \u2713 indexed {len(formulae)} formulae, {len(casks)} casks"), file=sys.stderr)
+            status_line(dim(f"  {prefix} \u2713 {len(formulae)} formulae, {len(casks)} casks"), done=True)
         return True
     except Exception as e:
         if not silent:
-            print(red(f"  \u2717 installed index failed: {e}"), file=sys.stderr)
+            status_line(red(f"  {prefix} \u2717 index failed: {e}"), done=True)
         return False
 
 

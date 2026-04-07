@@ -38,6 +38,19 @@ yellow = lambda t: c("33", t)
 cyan = lambda t: c("36", t)
 red = lambda t: c("31", t)
 magenta = lambda t: c("35", t)
+USE_COLOR_STDERR = sys.stderr.isatty()
+
+
+def status_line(msg: str, done: bool = False) -> None:
+    """Write an in-place status line to stderr (overwrites previous on TTY)."""
+    if USE_COLOR_STDERR:
+        if done:
+            print(f"\r\033[K{msg}", file=sys.stderr)
+        else:
+            print(f"\r\033[K{msg}", end="", file=sys.stderr, flush=True)
+    else:
+        if done:
+            print(msg, file=sys.stderr)
 
 
 def _fmt_entry(name_styled: str, ver: str, desc: str, homepage: str,
