@@ -40,38 +40,48 @@ red = lambda t: c("31", t)
 magenta = lambda t: c("35", t)
 
 
+def _fmt_entry(name_styled: str, ver: str, desc: str, homepage: str,
+               extra: str = "") -> str:
+    """Compact one-line format: name  ver  desc  │ url."""
+    parts = [name_styled]
+    if ver:
+        parts.append(dim(ver))
+    if extra:
+        parts.append(extra)
+    if desc:
+        parts.append(desc)
+    line = "  ".join(parts)
+    if homepage:
+        line += f"  {dim('│')} {dim(homepage)}"
+    return line
+
+
 def fmt_formula(f: dict) -> str:
-    name = bold(green(f["name"]))
-    ver = dim(f.get("versions", {}).get("stable", ""))
-    desc = f.get("desc", "")
-    homepage = dim(f.get("homepage", ""))
-    line1 = f"{name}  {ver}"
-    line2 = f"  {desc}"
-    line3 = f"  {homepage}" if homepage else ""
-    return "\n".join(x for x in [line1, line2, line3] if x)
+    return _fmt_entry(
+        bold(green(f["name"])),
+        f.get("versions", {}).get("stable", ""),
+        f.get("desc", ""),
+        f.get("homepage", ""),
+    )
 
 
 def fmt_cask(f: dict) -> str:
-    name = bold(cyan(f.get("token", "")))
-    ver = dim(str(f.get("version", "")))
-    desc = f.get("desc", "")
-    homepage = dim(f.get("homepage", ""))
-    line1 = f"{name}  {ver}"
-    line2 = f"  {desc}"
-    line3 = f"  {homepage}" if homepage else ""
-    return "\n".join(x for x in [line1, line2, line3] if x)
+    return _fmt_entry(
+        bold(cyan(f.get("token", ""))),
+        str(f.get("version", "")),
+        f.get("desc", ""),
+        f.get("homepage", ""),
+    )
 
 
 def fmt_tap_formula(f: dict) -> str:
-    tap = dim(f.get("tap", ""))
-    name = bold(magenta(f["name"]))
-    ver = dim(f.get("version", ""))
-    desc = f.get("desc", "")
-    homepage = dim(f.get("homepage", ""))
-    line1 = f"{name}  {ver}  {tap}"
-    line2 = f"  {desc}" if desc else ""
-    line3 = f"  {homepage}" if homepage else ""
-    return "\n".join(x for x in [line1, line2, line3] if x)
+    return _fmt_entry(
+        bold(magenta(f["name"])),
+        f.get("version", ""),
+        f.get("desc", ""),
+        f.get("homepage", ""),
+        extra=dim(f.get("tap", "")),
+    )
 
 
 def fmt_installed(f: dict, kind: str) -> str:
@@ -90,20 +100,18 @@ def display_section(results: list, kind: str, label: str | None = None) -> None:
         label = yellow("casks") if kind == "cask" else green("formulae")
     fmt = fmt_cask if kind == "cask" else fmt_formula
     print(f"  {label}")
-    print()
     for item in results:
-        print(fmt(item))
-        print()
+        print(f"  {fmt(item)}")
+    print()
 
 
 def display_tap_section(results: list) -> None:
     if not results:
         return
     print(f"  {magenta('taps')}")
-    print()
     for item in results:
-        print(fmt_tap_formula(item))
-        print()
+        print(f"  {fmt_tap_formula(item)}")
+    print()
 
 
 def display_installed_section(results: list, kind: str) -> None:
@@ -111,10 +119,9 @@ def display_installed_section(results: list, kind: str) -> None:
         return
     label = yellow("installed casks") if kind == "cask" else green("installed formulae")
     print(f"  {label}")
-    print()
     for item in results:
-        print(fmt_installed(item, kind))
-        print()
+        print(f"  {fmt_installed(item, kind)}")
+    print()
 
 
 def output_grep(all_results: list[tuple]) -> None:
