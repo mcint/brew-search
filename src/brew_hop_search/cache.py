@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -11,9 +12,15 @@ CACHE_DIR = Path.home() / ".cache" / "brew-hop-search"
 DB_PATH = CACHE_DIR / "brew-hop-search.db"
 
 
+def effective_db_path() -> Path:
+    override = os.environ.get("BREW_HOP_SEARCH_DB")
+    return Path(override) if override else DB_PATH
+
+
 def get_db() -> sqlite_utils.Database:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    return sqlite_utils.Database(DB_PATH)
+    p = effective_db_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return sqlite_utils.Database(p)
 
 
 def table_age(db: sqlite_utils.Database, kind: str) -> float:

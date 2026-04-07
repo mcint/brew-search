@@ -1,0 +1,1 @@
+firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/

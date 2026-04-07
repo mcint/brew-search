@@ -1,0 +1,14 @@
+{
+  "formula": [
+    {
+      "name": "node",
+      "desc": "Platform built on V8 to build network applications",
+      "homepage": "https://nodejs.org/",
+      "versions": {
+        "stable": "21.6.1"
+      },
+      "revision": 0
+    }
+  ],
+  "cask": []
+}

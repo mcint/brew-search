@@ -11,7 +11,7 @@ from pathlib import Path
 
 from brew_hop_search.cache import (
     DB_PATH, CACHE_DIR, get_db, json_path, table_age, table_count,
-    table_exists, table_updated_at,
+    table_exists, table_updated_at, effective_db_path,
 )
 from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
@@ -310,7 +310,7 @@ def main(argv=None):
     silent = quiet or verbose == 0
 
     # Show app name on first run (no DB yet)
-    if not DB_PATH.exists() and verbose > 0:
+    if not effective_db_path().exists() and verbose > 0:
         from brew_hop_search import __version__
         status_line(dim(f"  brew-hop-search v{__version__} — first run, building index \u2026"), done=True)
 

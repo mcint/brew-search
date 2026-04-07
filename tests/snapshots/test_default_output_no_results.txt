@@ -1,0 +1,3 @@
+  cache: 1h old   searching formula + cask
+
+  no results for 'zzzznonexistent'
