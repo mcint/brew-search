@@ -1,6 +1,6 @@
-usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-O] [-C]
-                       [--stale DUR] [--fresh DUR] [-n N] [--json] [-g] [-q]
-                       [-v] [-V] [-H]
+usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-O]
+                       [--brew-verify] [-C] [--stale DUR] [--fresh DUR] [-n N]
+                       [--json] [-g] [-q] [-v] [-V] [-H]
                        [query ...]
 
 Fast offline-first Homebrew formula/cask search.
@@ -18,6 +18,7 @@ options:
   -t, --taps            Also search formulae/casks from tapped repos
   -L, --local           Search brew's local API cache (offline)
   -O, --outdated        Show outdated packages with upgrade/pin hints
+  --brew-verify         Use brew command for outdated (slower, authoritative)
   -C, --cache           Show cache status and exit
   --stale DUR           Background refresh if cache older than DUR (default:
                         6h)

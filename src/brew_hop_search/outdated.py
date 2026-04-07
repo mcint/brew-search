@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 
+from brew_hop_search.cache import get_db, table_exists
 from brew_hop_search.display import (
     bold, dim, green, yellow, red, status_line, fmt_duration,
 )
@@ -21,20 +22,69 @@ def _brew_outdated_json() -> list[dict]:
     return json.loads(result.stdout)
 
 
-def collect_outdated(silent: bool = False) -> dict:
-    """Collect outdated formulae and casks.
+def collect_outdated_fast() -> dict:
+    """Compare installed vs API index versions locally (no brew subprocess).
 
-    Returns dict with 'formulae' and 'casks' lists.
+    Returns dict with 'formulae' and 'casks' lists matching brew outdated format.
     """
+    db = get_db()
+    outdated_formulae = []
+    outdated_casks = []
+
+    if table_exists(db, "installed_formula") and table_exists(db, "formula"):
+        for row in db.execute(
+            """SELECT i.name, i.version AS installed_ver, a.version AS latest_ver
+               FROM installed_formula i
+               JOIN formula a ON i.name = a.name
+               WHERE i.version != a.version AND a.version != ''"""
+        ).fetchall():
+            outdated_formulae.append({
+                "name": row[0],
+                "installed_versions": [row[1]],
+                "current_version": row[2],
+                "pinned": False,
+            })
+
+    if table_exists(db, "installed_cask") and table_exists(db, "cask"):
+        for row in db.execute(
+            """SELECT i.token, i.version AS installed_ver, a.version AS latest_ver
+               FROM installed_cask i
+               JOIN cask a ON i.token = a.token
+               WHERE i.version != a.version AND a.version != ''"""
+        ).fetchall():
+            outdated_casks.append({
+                "name": row[0],
+                "installed_versions": [row[1]],
+                "current_version": row[2],
+            })
+
+    return {"formulae": outdated_formulae, "casks": outdated_casks}
+
+
+def collect_outdated_brew(silent: bool = False) -> dict:
+    """Collect outdated via `brew outdated --json=v2` (slow, authoritative)."""
     if not silent:
-        status_line(dim("  [outdated] checking for updates …"))
+        status_line(dim("  [outdated] querying brew …"))
     data = _brew_outdated_json()
     formulae = data.get("formulae", [])
     casks = data.get("casks", [])
     if not silent:
         total = len(formulae) + len(casks)
-        status_line(dim(f"  [outdated] ✓ found {total} outdated"), done=True)
+        status_line(dim(f"  [outdated] ✓ brew reports {total} outdated"), done=True)
     return {"formulae": formulae, "casks": casks}
+
+
+def collect_outdated(use_brew: bool = False, silent: bool = False) -> dict:
+    """Collect outdated packages. Fast local comparison by default."""
+    if use_brew:
+        return collect_outdated_brew(silent=silent)
+    if not silent:
+        status_line(dim("  [outdated] comparing installed vs index …"))
+    data = collect_outdated_fast()
+    total = len(data["formulae"]) + len(data["casks"])
+    if not silent:
+        status_line(dim(f"  [outdated] ✓ {total} outdated (local)"), done=True)
+    return data
 
 
 def display_outdated(data: dict, as_json: bool = False) -> None:
