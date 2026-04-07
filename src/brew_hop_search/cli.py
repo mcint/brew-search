@@ -176,6 +176,48 @@ def _show_history(name: str, as_json: bool = False) -> None:
     print(dim("  pin:      brew pin <name>"))
 
 
+# ── version display ─────────────────────────────────────────────────────────
+
+def _show_version(level: int) -> None:
+    from brew_hop_search import __version__
+    print(f"brew-hop-search {__version__}")
+    if level >= 2:
+        # Show git commit log for this package
+        import subprocess
+        try:
+            pkg_dir = Path(__file__).resolve().parent
+            result = subprocess.run(
+                ["git", "-C", str(pkg_dir), "log", "--oneline", "-10"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                print(f"\n{bold('recent commits')}")
+                for line in result.stdout.strip().splitlines():
+                    print(f"  {dim(line)}")
+        except Exception:
+            pass
+        # Live PyPI version check
+        print()
+        try:
+            from brew_hop_search.version_check import PYPI_URL, _parse_version
+            from urllib.request import Request, urlopen
+            import json as json_mod
+            req = Request(PYPI_URL, headers={"User-Agent": "brew-hop-search-cli/1.0"})
+            with urlopen(req, timeout=5) as r:
+                data = json_mod.loads(r.read())
+            latest = data.get("info", {}).get("version", "")
+            if latest:
+                if _parse_version(latest) > _parse_version(__version__):
+                    print(f"{bold('pypi')}  {yellow(latest)} available (current: {__version__})")
+                    print(dim(f"  pip install -U brew-hop-search"))
+                else:
+                    print(f"{bold('pypi')}  {green('up to date')} ({latest})")
+            else:
+                print(f"{bold('pypi')}  {dim('could not determine latest version')}")
+        except Exception as e:
+            print(f"{bold('pypi')}  {dim(f'check failed: {e}')}")
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main(argv=None):
@@ -210,6 +252,12 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true", help="Output raw JSON")
     ap.add_argument("-g", "--grep", action="store_true",
                     help="Greppable output: slug\\tversion\\turl\\n  description")
+    ap.add_argument("-q", "--quiet", action="store_true",
+                    help="Quiet mode: results only, no header/footer")
+    ap.add_argument("-v", "--verbose", action="count", default=0,
+                    help="Verbose process output (-v, -vv for more)")
+    ap.add_argument("-V", "--version", action="count", default=0,
+                    help="Show version (-VV for commit log and live check)")
     ap.add_argument("-H", "--history", action="store_true",
                     help="Show version history for a package (from install log)")
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
@@ -221,6 +269,11 @@ def main(argv=None):
     if getattr(args, "_bg_refresh", None):
         kind, url = args._bg_refresh
         api.refresh(kind, url, silent=True)
+        return
+
+    # ── version mode ──
+    if args.version:
+        _show_version(args.version)
         return
 
     # ── cache status ──
@@ -252,36 +305,31 @@ def main(argv=None):
 
     stale = args.stale if args.stale is not None else DEFAULT_STALE
     fresh = args.fresh
+    verbose = args.verbose
+    quiet = args.quiet
+    silent = quiet or verbose == 0
 
     # Show app name on first run (no DB yet)
-    if not DB_PATH.exists():
+    if not DB_PATH.exists() and verbose > 0:
         from brew_hop_search import __version__
         status_line(dim(f"  brew-hop-search v{__version__} — first run, building index \u2026"), done=True)
 
     # ── determine search sources ──
-    # Default: search remote API index (formula + cask)
-    # --installed: search installed only
-    # --taps: add taps to results
-    # --local: use local brew cache instead of remote API
-
     search_sources = []  # (kind, label, pk_col)
 
     if args.installed:
-        # Ensure installed cache
         installed.ensure_cache(force=args.refresh)
         if not args.casks:
             search_sources.append(("installed_formula", "installed formulae", "name"))
         if not args.formulae:
             search_sources.append(("installed_cask", "installed casks", "token"))
     elif args.local:
-        # Use brew's local API cache
         local.ensure_cache(force=args.refresh)
         if not args.casks:
             search_sources.append(("local_formula", "local formulae", "name"))
         if not args.formulae:
             search_sources.append(("local_cask", "local casks", "token"))
     else:
-        # Default: remote API
         api_kinds = []
         if args.formulae and not args.casks:
             api_kinds = [("formula", api.FORMULA_URL)]
@@ -297,12 +345,10 @@ def main(argv=None):
             pk = "name" if kind == "formula" else "token"
             search_sources.append((kind, kind, pk))
 
-    # Concurrently refresh taps/installed if requested alongside main search
     if args.taps:
         taps.ensure_cache(force=args.refresh)
         search_sources.append(("tap", "taps", "slug"))
 
-    # If --installed used with non-installed search, also index installed async
     if not args.installed and not args.local:
         _maybe_async_installed_refresh()
 
@@ -313,6 +359,9 @@ def main(argv=None):
         if not table_exists(db, kind):
             continue
         age = table_age(db, kind)
+        if verbose >= 2:
+            count = table_count(db, kind) or 0
+            print(dim(f"  [{kind}] searching {count} entries (cache {fmt_duration(age)} old)"), file=sys.stderr)
         results = search(db, kind, args.query, args.limit, pk_col=pk_col)
         all_results.append((kind, results, age))
 
@@ -325,32 +374,35 @@ def main(argv=None):
         output_grep(all_results)
         return
 
-    # Cache age header
-    ages = [age for _, _, age in all_results if age != float("inf")]
-    min_age = min(ages) if ages else 0
-    age_str = "just fetched" if min_age < 60 else fmt_duration(min_age) + " old"
-    source_labels = []
-    for kind, _, _ in all_results:
-        if kind.startswith("installed"):
-            source_labels.append(green("installed") if "formula" in kind else yellow("installed"))
-        elif kind.startswith("local"):
-            source_labels.append(cyan("local"))
-        elif kind == "tap":
-            source_labels.append(magenta("taps"))
-        elif kind == "cask":
-            source_labels.append(yellow("casks"))
-        else:
-            source_labels.append(green("formulae"))
-    # Deduplicate labels while preserving order
-    seen = set()
-    unique_labels = []
-    for l in source_labels:
-        if l not in seen:
-            seen.add(l)
-            unique_labels.append(l)
-    searching = " + ".join(unique_labels)
-    print(dim(f"  cache: {age_str}   searching {searching}"))
-    print()
+    if not quiet:
+        # Cache age header with kind prefixes
+        ages = [age for _, _, age in all_results if age != float("inf")]
+        min_age = min(ages) if ages else 0
+        age_str = "just fetched" if min_age < 60 else fmt_duration(min_age) + " old"
+        source_labels = []
+        for kind, _, _ in all_results:
+            if kind.startswith("installed"):
+                sub = "formula" if "formula" in kind else "cask"
+                source_labels.append(f"{green('installed')}:{green(sub) if sub == 'formula' else yellow(sub)}")
+            elif kind.startswith("local"):
+                sub = "formula" if "formula" in kind else "cask"
+                source_labels.append(f"{cyan('local')}:{green(sub) if sub == 'formula' else yellow(sub)}")
+            elif kind == "tap":
+                source_labels.append(magenta("taps"))
+            elif kind == "cask":
+                source_labels.append(yellow("cask"))
+            else:
+                source_labels.append(green("formula"))
+        # Deduplicate labels while preserving order
+        seen = set()
+        unique_labels = []
+        for l in source_labels:
+            if l not in seen:
+                seen.add(l)
+                unique_labels.append(l)
+        searching = " + ".join(unique_labels)
+        print(dim(f"  cache: {age_str}   searching {searching}"))
+        print()
 
     total = 0
     first_name = None
@@ -371,10 +423,11 @@ def main(argv=None):
             r = results[0]
             first_name = r.get("token") or r.get("name", "")
 
-    if total == 0:
-        print(dim(f"  no results for {args.query!r}"))
-    elif first_name:
-        print(dim(f"  {total} result(s)  \u2022  brew install {first_name}"))
+    if not quiet:
+        if total == 0:
+            print(dim(f"  no results for {args.query!r}"))
+        elif first_name:
+            print(dim(f"  {total} result(s)  \u2022  brew install {first_name}"))
 
 
 def _maybe_async_installed_refresh():

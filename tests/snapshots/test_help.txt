@@ -1,5 +1,6 @@
 usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-O] [-C]
-                       [--stale DUR] [--fresh DUR] [-n N] [--json] [-g] [-H]
+                       [--stale DUR] [--fresh DUR] [-n N] [--json] [-g] [-q]
+                       [-v] [-V] [-H]
                        [query]
 
 Fast offline-first Homebrew formula/cask search.
@@ -24,4 +25,7 @@ options:
   -n N, --limit N       Max results per section (default 20)
   --json                Output raw JSON
   -g, --grep            Greppable output: slug\tversion\turl\n description
+  -q, --quiet           Quiet mode: results only, no header/footer
+  -v, --verbose         Verbose process output (-v, -vv for more)
+  -V, --version         Show version (-VV for commit log and live check)
   -H, --history         Show version history for a package (from install log)
