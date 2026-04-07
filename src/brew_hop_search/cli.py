@@ -197,6 +197,8 @@ def main(argv=None):
                     help="Also search formulae/casks from tapped repos")
     ap.add_argument("-L", "--local", action="store_true",
                     help="Search brew's local API cache (offline)")
+    ap.add_argument("-O", "--outdated", action="store_true",
+                    help="Show outdated packages with upgrade/pin hints")
     ap.add_argument("-C", "--cache", action="store_true",
                     help="Show cache status and exit")
     ap.add_argument("--stale", type=parse_duration, default=None, metavar="DUR",
@@ -227,6 +229,13 @@ def main(argv=None):
             show_cache_status_json()
         else:
             show_cache_status()
+        return
+
+    # ── outdated mode ──
+    if args.outdated:
+        from brew_hop_search.outdated import collect_outdated, display_outdated
+        data = collect_outdated()
+        display_outdated(data, as_json=args.json)
         return
 
     # ── history mode ──
