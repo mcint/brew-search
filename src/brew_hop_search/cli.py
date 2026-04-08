@@ -477,7 +477,10 @@ def main(argv=None):
             print(dim(f"  no results{f' for {query!r}' if query else ''}"))
         elif first_name:
             count = f"{total}/{total_matched}" if total_matched > total else str(total)
-            print(dim(f"  {count} results • brew install {first_name}"))
+            range_str = ""
+            if offset > 0:
+                range_str = f" ({offset + 1}-{offset + total})"
+            print(dim(f"  {count} results{range_str} • brew install {first_name}"))
 
 
 if __name__ == "__main__":
