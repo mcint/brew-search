@@ -227,8 +227,12 @@ def main(argv=None):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("query", nargs="*", help="Search query (multiple terms matched with AND)")
-    ap.add_argument("--refresh", action="store_true",
-                    help="Force synchronous re-fetch before searching")
+    ap.add_argument("--refresh", nargs="?", type=parse_duration, const=0, default=None,
+                    metavar="DUR",
+                    help="Sync refresh (--refresh=DUR: if older than DUR; bare --refresh: force)")
+    ap.add_argument("--stale", nargs="?", type=parse_duration, const=DEFAULT_STALE,
+                    default=None, metavar="DUR",
+                    help="Background refresh if older than DUR (default: 6h)")
     ap.add_argument("-f", "--formulae", "--formula", action="store_true",
                     help="Search formulae only")
     ap.add_argument("-c", "--casks", "--cask", action="store_true",
@@ -245,10 +249,6 @@ def main(argv=None):
                     help="Use brew command for outdated (slower, authoritative)")
     ap.add_argument("-C", "--cache", action="store_true",
                     help="Show cache status and exit")
-    ap.add_argument("--stale", type=parse_duration, default=None, metavar="DUR",
-                    help="Background refresh if cache older than DUR (default: 6h)")
-    ap.add_argument("--fresh", type=parse_duration, default=None, metavar="DUR",
-                    help="Force synchronous refresh if cache older than DUR")
     ap.add_argument("-n", "--limit", type=int, default=20, metavar="N",
                     help="Max results per section (default 20)")
     ap.add_argument("--json", action="store_true", help="Output raw JSON")
@@ -309,7 +309,9 @@ def main(argv=None):
         sys.exit(0)
 
     stale = args.stale if args.stale is not None else DEFAULT_STALE
-    fresh = args.fresh
+    # --refresh: None=no force, 0=force now, >0=sync if older than DUR
+    force_refresh = args.refresh is not None and args.refresh == 0
+    fresh = args.refresh if args.refresh and args.refresh > 0 else None
     verbose = args.verbose
     quiet = args.quiet
     silent = quiet or verbose == 0
@@ -323,13 +325,13 @@ def main(argv=None):
     search_sources = []  # (kind, label, pk_col)
 
     if args.installed:
-        installed.ensure_cache(force=args.refresh)
+        installed.ensure_cache(force=force_refresh)
         if not args.casks:
             search_sources.append(("installed_formula", "installed formulae", "name"))
         if not args.formulae:
             search_sources.append(("installed_cask", "installed casks", "token"))
     elif args.local:
-        local.ensure_cache(force=args.refresh)
+        local.ensure_cache(force=force_refresh)
         if not args.casks:
             search_sources.append(("local_formula", "local formulae", "name"))
         if not args.formulae:
@@ -344,18 +346,18 @@ def main(argv=None):
             api_kinds = [("formula", api.FORMULA_URL), ("cask", api.CASK_URL)]
 
         for kind, url in api_kinds:
-            if not api.ensure_cache(kind, url, args.refresh, stale, fresh):
+            if not api.ensure_cache(kind, url, force_refresh, stale, fresh):
                 print(red(f"No cache for {kind} and fetch failed."), file=sys.stderr)
                 sys.exit(1)
             pk = "name" if kind == "formula" else "token"
             search_sources.append((kind, kind, pk))
 
     if args.taps:
-        taps.ensure_cache(force=args.refresh)
+        taps.ensure_cache(force=force_refresh)
         search_sources.append(("tap", "taps", "slug"))
 
-    if not args.installed and not args.local:
-        _maybe_async_installed_refresh()
+    # Background installed refresh only when explicitly searching installed
+    # (never on default path — avoids spawning `brew info` on every search)
 
     # ── search ──
     db = get_db()
@@ -433,22 +435,6 @@ def main(argv=None):
             print(dim(f"  no results for {query!r}"))
         elif first_name:
             print(dim(f"  {total} result(s)  \u2022  brew install {first_name}"))
-
-
-def _maybe_async_installed_refresh():
-    """Best-effort background refresh of installed index if stale."""
-    try:
-        db = get_db()
-        if not table_exists(db, "installed_formula") or table_age(db, "installed_formula") > installed.DEFAULT_STALE:
-            import subprocess
-            subprocess.Popen(
-                [sys.executable, "-m", "brew_hop_search._bg_installed"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-    except Exception:
-        pass
 
 
 if __name__ == "__main__":

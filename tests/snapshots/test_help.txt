@@ -1,6 +1,6 @@
-usage: brew-hop-search [-h] [--refresh] [-f] [-c] [-i] [-t] [-L] [-O]
-                       [--brew-verify] [-C] [--stale DUR] [--fresh DUR] [-n N]
-                       [--json] [-g] [-q] [-v] [-V] [-H]
+usage: brew-hop-search [-h] [--refresh [DUR]] [--stale [DUR]] [-f] [-c] [-i]
+                       [-t] [-L] [-O] [--brew-verify] [-C] [-n N] [--json]
+                       [-g] [-q] [-v] [-V] [-H]
                        [query ...]
 
 Fast offline-first Homebrew formula/cask search.
@@ -10,7 +10,9 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  --refresh             Force synchronous re-fetch before searching
+  --refresh [DUR]       Sync refresh (--refresh=DUR: if older than DUR; bare
+                        --refresh: force)
+  --stale [DUR]         Background refresh if older than DUR (default: 6h)
   -f, --formulae, --formula
                         Search formulae only
   -c, --casks, --cask   Search casks only
@@ -20,9 +22,6 @@ options:
   -O, --outdated        Show outdated packages with upgrade/pin hints
   --brew-verify         Use brew command for outdated (slower, authoritative)
   -C, --cache           Show cache status and exit
-  --stale DUR           Background refresh if cache older than DUR (default:
-                        6h)
-  --fresh DUR           Force synchronous refresh if cache older than DUR
   -n N, --limit N       Max results per section (default 20)
   --json                Output raw JSON
   -g, --grep            Greppable output: slug\tversion\turl\n description
