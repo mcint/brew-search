@@ -226,42 +226,55 @@ def main(argv=None):
         description="Fast offline-first Homebrew formula/cask search.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("query", nargs="*", help="Search query (multiple terms matched with AND)")
-    ap.add_argument("--refresh", nargs="?", type=parse_duration, const=0, default=None,
-                    metavar="DUR",
-                    help="Sync refresh (--refresh=DUR: if older than DUR; bare --refresh: force)")
-    ap.add_argument("--stale", nargs="?", type=parse_duration, const=DEFAULT_STALE,
-                    default=None, metavar="DUR",
-                    help="Background refresh if older than DUR (default: 6h)")
-    ap.add_argument("-f", "--formulae", "--formula", action="store_true",
-                    help="Search formulae only")
-    ap.add_argument("-c", "--casks", "--cask", action="store_true",
-                    help="Search casks only")
-    ap.add_argument("-i", "--installed", action="store_true",
-                    help="Search only installed packages")
-    ap.add_argument("-t", "--taps", action="store_true",
-                    help="Also search formulae/casks from tapped repos")
-    ap.add_argument("-L", "--local", action="store_true",
-                    help="Search brew's local API cache (offline)")
-    ap.add_argument("-O", "--outdated", action="store_true",
-                    help="Show outdated packages with upgrade/pin hints")
-    ap.add_argument("--brew-verify", action="store_true",
-                    help="Use brew command for outdated (slower, authoritative)")
-    ap.add_argument("-C", "--cache", action="store_true",
-                    help="Show cache status and exit")
-    ap.add_argument("-n", "--limit", type=str, default="20", metavar="N[+OFFSET]",
-                    help="Max results per section, optional +offset (e.g. 20+40)")
-    ap.add_argument("--json", action="store_true", help="Output raw JSON")
-    ap.add_argument("-g", "--grep", action="store_true",
-                    help="Greppable output: slug\\tversion\\turl\\n  description")
-    ap.add_argument("-q", "--quiet", action="store_true",
-                    help="Quiet mode: results only, no header/footer")
-    ap.add_argument("-v", "--verbose", action="count", default=0,
-                    help="Verbose process output (-v, -vv for more)")
-    ap.add_argument("-V", "--version", action="count", default=0,
-                    help="Show version (-VV for commit log and live check)")
-    ap.add_argument("-H", "--history", action="store_true",
-                    help="Show version history for a package (from install log)")
+    ap.add_argument("query", nargs="*", help="search terms (AND-matched)")
+
+    # ── search sources ──
+    src = ap.add_argument_group("sources", "what to search (composable, default: remote API)")
+    src.add_argument("-f", "--formulae", "--formula", action="store_true",
+                     help="formulae only")
+    src.add_argument("-c", "--casks", "--cask", action="store_true",
+                     help="casks only")
+    src.add_argument("-i", "--installed", action="store_true",
+                     help="installed packages")
+    src.add_argument("-t", "--taps", action="store_true",
+                     help="tapped repos")
+    src.add_argument("-L", "--local", action="store_true",
+                     help="brew's local API cache (offline)")
+
+    # ── output format ──
+    fmt = ap.add_argument_group("output", "how results are displayed")
+    fmt.add_argument("-g", "--grep", action="store_true",
+                     help="tab-separated for piping")
+    fmt.add_argument("-q", "--quiet", action="store_true",
+                     help="results only, no chrome (for grep/fzf)")
+    fmt.add_argument("--json", action="store_true",
+                     help="raw JSON")
+    fmt.add_argument("-n", "--limit", type=str, default="20", metavar="N[+OFF]",
+                     help="max results [+offset] (default: 20)")
+    fmt.add_argument("-v", "--verbose", action="count", default=0,
+                     help="process detail (-v, -vv)")
+
+    # ── cache ──
+    cache = ap.add_argument_group("cache", "freshness control")
+    cache.add_argument("--refresh", nargs="?", type=parse_duration, const=0,
+                       default=None, metavar="DUR",
+                       help="sync refresh (bare: force, =DUR: if older)")
+    cache.add_argument("--stale", nargs="?", type=parse_duration,
+                       const=DEFAULT_STALE, default=None, metavar="DUR",
+                       help="background refresh threshold (default: 6h)")
+
+    # ── info ──
+    info = ap.add_argument_group("info", "status and metadata")
+    info.add_argument("-V", "--version", action="count", default=0,
+                      help="version (-VV: commit log + PyPI check)")
+    info.add_argument("-C", "--cache-status", dest="cache", action="store_true",
+                      help="show cache status")
+    info.add_argument("-O", "--outdated", action="store_true",
+                      help="outdated packages with upgrade hints")
+    info.add_argument("--brew-verify", action="store_true",
+                      help="use brew for outdated (slower, authoritative)")
+    info.add_argument("-H", "--history", action="store_true",
+                      help="version history for rollback")
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
                     help=argparse.SUPPRESS)
 
