@@ -108,9 +108,9 @@ def fmt_installed(f: dict, kind: str) -> str:
 
 def _section_header(label: str, shown: int, total: int | None,
                     install_hint: str = "") -> str:
-    """Format a section header: label (count) • brew install ..."""
+    """Format a section header: # label (count) • brew install ..."""
     count = f"{shown}/{total}" if total is not None and total > shown else str(shown)
-    parts = [f"  {label} {dim(f'({count})')}"]
+    parts = [f"{dim('#')} {label} {dim(f'({count})')}"]
     if install_hint:
         parts.append(dim(f"• {install_hint}"))
     return "  ".join(parts)

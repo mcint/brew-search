@@ -202,7 +202,7 @@ def test_expect_default_output(testdb):
     expect(_run_with_db(testdb, "python"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
-           "  formulae (1/3)  • brew install python@3.13\n"
+           "# formulae (1/3)  • brew install python@3.13\n"
            "  python@3.13  3.13.2  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/\n")
 
 
@@ -232,7 +232,7 @@ def test_expect_cask_search(testdb):
     expect(_run_with_db(testdb, "-c", "firefox"),
            "  cache: 1h old   searching cask\n"
            "\n"
-           "  casks (1/2)  • brew install --cask firefox\n"
+           "# casks (1/2)  • brew install --cask firefox\n"
            "  firefox  122.0  Web browser  │ https://www.mozilla.org/firefox/\n")
 
 
@@ -241,7 +241,7 @@ def test_expect_multi_word_query(testdb):
     expect(_run_with_db(testdb, "search", "tool"),
            "  cache: 1h old   searching formula + cask\n"
            "\n"
-           "  formulae (1/3)  • brew install ripgrep\n"
+           "# formulae (1/3)  • brew install ripgrep\n"
            "  ripgrep  14.1.0  Search tool like grep and The Silver Searcher  │ https://github.com/BurntSushi/ripgrep\n")
 
 
