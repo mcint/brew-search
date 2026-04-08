@@ -10,6 +10,9 @@ Usage in tests:
 On first run (or with UPDATE_SNAPSHOTS=1), writes the snapshot file.
 On subsequent runs, diffs against stored snapshot.
 To update: UPDATE_SNAPSHOTS=1 pytest tests/
+
+At pytest -vv, expected output is printed after each passing test —
+serves as self-documenting usage examples (cht.sh style).
 """
 from __future__ import annotations
 
@@ -21,6 +24,21 @@ import pytest
 
 SNAP_DIR = Path(__file__).parent / "snapshots"
 UPDATE = os.environ.get("UPDATE_SNAPSHOTS", "") == "1"
+
+# Thread-local stash for expected output — read by conftest.py at -vv
+_current_expects: list[tuple[str, str]] = []  # [(label, content), ...]
+
+
+def _stash(label: str, content: str) -> None:
+    """Record expected output for the current test (displayed at -vv)."""
+    _current_expects.append((label, content))
+
+
+def drain_expects() -> list[tuple[str, str]]:
+    """Pop all stashed expects (called by conftest after each test)."""
+    items = list(_current_expects)
+    _current_expects.clear()
+    return items
 
 
 class Snap:
@@ -39,9 +57,11 @@ class Snap:
         if UPDATE or not snap_path.exists():
             SNAP_DIR.mkdir(parents=True, exist_ok=True)
             snap_path.write_text(actual)
+            _stash(f"snapshot:{snap_path.name}", actual)
             return
 
         expected = snap_path.read_text()
+        _stash(f"snapshot:{snap_path.name}", expected)
         if actual != expected:
             # Show unified diff
             import difflib
@@ -68,6 +88,7 @@ def expect(actual: str, expected: str) -> None:
     ''')
     """
     actual = actual.rstrip("\n") + "\n"
+    _stash("expect", expected)
     if actual != expected:
         import difflib
         diff = difflib.unified_diff(

@@ -332,11 +332,13 @@ def main(argv=None):
     limit_str = args.limit
     if "+" in limit_str:
         lim_part, off_part = limit_str.split("+", 1)
-        limit = int(lim_part) or 999999  # 0 = all
-        offset = int(off_part)
+        limit = int(lim_part) if lim_part else 20  # bare +OFF uses default limit
+        offset = int(off_part) if off_part else 0
     else:
-        limit = int(limit_str) or 999999  # 0 = all
+        limit = int(limit_str)
         offset = 0
+    if limit == 0:
+        limit = 999999  # 0 = all
 
     stale = args.stale if args.stale is not None else DEFAULT_STALE
     # --refresh: None=no force, 0=force now, >0=sync if older than DUR
