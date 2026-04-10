@@ -171,7 +171,7 @@ def display_outdated(data: dict, as_json: bool = False,
 
     if as_json:
         if diff_data:
-            print(json.dumps({"fast": data, "brew": diff_data}, indent=2))
+            print(json.dumps({"bhs": data, "brew": diff_data}, indent=2))
         else:
             print(json.dumps(data, indent=2))
         return
@@ -212,81 +212,82 @@ def display_outdated(data: dict, as_json: bool = False,
     print(dim(f"  -- use --brew-verify to diff against brew's authoritative results"))
 
 
-def _display_outdated_diff(fast: dict, brew: dict) -> None:
-    """Show package-matched diff between fast and brew-verify results.
+def _display_outdated_diff(bhs: dict, brew: dict) -> None:
+    """Show package-matched diff between bhs and brew-verify results.
 
     Prefixes:
-      ~  both agree (version match or both present with different versions)
-      +  only in brew (fast missed it)
-      -  only in fast (brew disagrees)
+      ~  version differs between bhs and brew
+      +  only in brew (bhs missed it)
+      -  only in bhs (brew disagrees)
+      (space)  both agree
     """
     for kind, label, color_fn in [
         ("formulae", "outdated formulae", green),
         ("casks", "outdated casks", yellow),
     ]:
-        fast_list = fast.get(kind, [])
+        bhs_list = bhs.get(kind, [])
         brew_list = brew.get(kind, [])
-        fast_map = {_outdated_name(e): e for e in fast_list}
+        bhs_map = {_outdated_name(e): e for e in bhs_list}
         brew_map = {_outdated_name(e): e for e in brew_list}
-        all_names = sorted(set(fast_map) | set(brew_map))
+        all_names = sorted(set(bhs_map) | set(brew_map))
         if not all_names:
             continue
 
         # Counts
-        agree = sum(1 for n in all_names if n in fast_map and n in brew_map
-                    and _outdated_current(fast_map[n]) == _outdated_current(brew_map[n]))
-        differ = sum(1 for n in all_names if n in fast_map and n in brew_map
-                     and _outdated_current(fast_map[n]) != _outdated_current(brew_map[n]))
-        only_fast = sum(1 for n in all_names if n in fast_map and n not in brew_map)
-        only_brew = sum(1 for n in all_names if n not in fast_map and n in brew_map)
+        agree = sum(1 for n in all_names if n in bhs_map and n in brew_map
+                    and _outdated_current(bhs_map[n]) == _outdated_current(brew_map[n]))
+        differ = sum(1 for n in all_names if n in bhs_map and n in brew_map
+                     and _outdated_current(bhs_map[n]) != _outdated_current(brew_map[n]))
+        only_bhs = sum(1 for n in all_names if n in bhs_map and n not in brew_map)
+        only_brew = sum(1 for n in all_names if n not in bhs_map and n in brew_map)
         total = len(all_names)
-        diff_str = f"~{differ}" if differ else ""
-        parts = [s for s in [diff_str, f"+{only_brew}" if only_brew else "",
-                             f"-{only_fast}" if only_fast else ""] if s]
+        parts = [s for s in [f"~{differ}" if differ else "",
+                             f"+{only_brew}" if only_brew else "",
+                             f"-{only_bhs}" if only_bhs else ""] if s]
         summary = f"  {dim(' '.join(parts))}" if parts else ""
         match_note = f"  {dim(f'{agree} match')}" if agree else ""
         print(f"  {dim('#')} {color_fn(label)} {dim(f'({total})')}{summary}{match_note}")
 
         for name in all_names:
-            in_fast = name in fast_map
+            in_bhs = name in bhs_map
             in_brew = name in brew_map
-            f_entry = fast_map.get(name, {})
-            b_entry = brew_map.get(name, {})
+            b_entry = bhs_map.get(name, {})
+            br_entry = brew_map.get(name, {})
 
-            if in_fast and in_brew:
-                # Both agree it's outdated — check if versions differ
-                f_inst = _outdated_installed(f_entry)
+            if in_bhs and in_brew:
+                # Both report outdated — check if versions differ
                 b_inst = _outdated_installed(b_entry)
-                f_cur = _outdated_current(f_entry)
+                br_inst = _outdated_installed(br_entry)
                 b_cur = _outdated_current(b_entry)
+                br_cur = _outdated_current(br_entry)
                 tags = []
-                if b_entry.get("pinned"):
+                if br_entry.get("pinned"):
                     tags.append(yellow("[pinned]"))
-                if b_entry.get("keg_only") or f_entry.get("keg_only"):
+                if br_entry.get("keg_only") or b_entry.get("keg_only"):
                     tags.append(dim("[keg-only]"))
-                if b_entry.get("auto_updates"):
+                if br_entry.get("auto_updates"):
                     tags.append(dim("[auto-updates]"))
-                # Word-diff: highlight version differences with ~
-                if f_cur != b_cur:
-                    ver_str = f"{dim(f_inst)} → {red(f_cur)}{dim('|')}{green(b_cur)}"
+                if b_cur != br_cur:
+                    # Word-diff: bhs version | brew version
+                    ver_str = f"{dim(b_inst)} → {red(b_cur)}{dim('|')}{green(br_cur)}"
                     tag_line = "  " + " ".join(tags) if tags else ""
                     print(f"  {yellow('~')} {bold(color_fn(name))}  {ver_str}{tag_line}")
                 else:
-                    # Agree completely — show plain (no prefix, just indent)
-                    print(_fmt_outdated_line(name, str(b_inst), b_cur, tags, color_fn, " "))
-            elif in_brew and not in_fast:
-                # Brew found it, fast missed it
-                installed = _outdated_installed(b_entry)
-                current = _outdated_current(b_entry)
+                    # Agree completely — no prefix
+                    print(_fmt_outdated_line(name, str(br_inst), br_cur, tags, color_fn, " "))
+            elif in_brew and not in_bhs:
+                # Brew found it, bhs missed it
+                installed = _outdated_installed(br_entry)
+                current = _outdated_current(br_entry)
                 tags = [dim("[brew-only]")]
                 print(_fmt_outdated_line(name, installed, current, tags, color_fn, green("+")))
             else:
-                # Fast found it, brew disagrees
-                installed = _outdated_installed(f_entry)
-                current = _outdated_current(f_entry)
-                tags = [dim("[fast-only]")]
+                # bhs found it, brew disagrees
+                installed = _outdated_installed(b_entry)
+                current = _outdated_current(b_entry)
+                tags = [dim("[bhs-only]")]
                 print(_fmt_outdated_line(name, installed, current, tags, color_fn, red("-")))
 
     print()
-    print(dim(f"  {yellow('~')} version differs  {green('+')} brew-only  {red('-')} fast-only  (unmarked = agree)"))
-    print(dim(f"  word-diff: {red('fast')}{dim('|')}{green('brew')} on version mismatch"))
+    print(dim(f"  {yellow('~')} version differs  {green('+')} brew-only  {red('-')} bhs-only  (unmarked = agree)"))
+    print(dim(f"  word-diff: {red('bhs')}{dim('|')}{green('brew')} on version mismatch"))

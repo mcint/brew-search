@@ -68,22 +68,22 @@ output is a package-matched diff showing where they agree and disagree.
   ~ node  21.6.0 → 21.6.1  [pinned]
   ~ wget  1.24.4 → 1.24.5_1|1.24.5  [keg-only]
   + tap-only-pkg  1.0 → 1.1  [brew-only]
-  - false-positive  2.0 → 2.1  [fast-only]
+  - false-positive  2.0 → 2.1  [bhs-only]
 ```
 
 **Diff prefixes**:
 - `~` both agree the package is outdated (version may differ in detail)
-- `+` only brew found it outdated (fast missed — tap-only, bottle rebuild, etc.)
-- `-` only fast found it outdated (brew disagrees — likely a false positive)
+- `+` only brew found it outdated (bhs missed — tap-only, bottle rebuild, etc.)
+- `-` only bhs found it outdated (brew disagrees — likely a false positive)
 
-**Version word-diff**: When both agree a package is outdated but report
-different target versions, both are shown: `fast_ver|brew_ver`
+**Version word-diff**: When both report a package as outdated but with
+different target versions, both are shown: `bhs_ver|brew_ver`
 
 ### JSON with diff
 
 ```json
 {
-  "fast": { "formulae": [...], "casks": [...] },
+  "bhs": { "formulae": [...], "casks": [...] },
   "brew": { "formulae": [...], "casks": [...] }
 }
 ```

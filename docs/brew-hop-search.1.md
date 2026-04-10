@@ -98,7 +98,7 @@ controls how much context is shown (see `docs/specs/OUTPUT.md` for full spec).
 * `--brew-verify`:
   Use with `-O` to run **both** fast local comparison and
   `brew outdated --json=v2`, then show a package-matched diff.
-  Prefixes: `~` both agree, `+` brew-only, `-` fast-only.
+  Prefixes: `~` version differs, `+` brew-only, `-` bhs-only.
   Version word-diff shown when target versions differ.
 
 * `-H`, `--history`:
