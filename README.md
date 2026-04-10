@@ -40,7 +40,7 @@ Default search — clean, human-optimal:
 
 With `-v` — source tags and cache info:
 ```
-  -- cache: 1h26m old   searching formula + cask
+  -- cache: 1h58m old   searching formula + cask
   # formulae (5/8306)  • brew install python-argcomplete
   f python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
   f python-build  1.4.2  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
@@ -101,13 +101,13 @@ Also: `--tsv`, `--json`, `--sql`, `-g` (grep).
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.5 MB
-  formula    8306  1h26m ago  fts  30MB json
-  cask    7596  1h26m ago  fts  14MB json
-  installed:f     460  3m ago
-  installed:c      85  3m ago
-  taps      49  56m ago
-  local:f     160  1d23h ago
-  local:c      59  1d23h ago
+  formula    8306  1h58m ago  fts  30MB json
+  cask    7596  1h58m ago  fts  14MB json
+  installed:f     460  35m ago
+  installed:c      85  35m ago
+  taps      49  1h28m ago
+  local:f     160  2d ago
+  local:c      59  2d ago
 ```
 
 ## Usage
@@ -165,8 +165,8 @@ brew-hop-search -i -c                  # installed casks only
 brew-hop-search -q python | fzf        # pipe to fzf
 brew-hop-search --csv python | qsv sort -s name  # sort CSV
 brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
-brew-hop-search -O                     # show outdated (fast, local)
-brew-hop-search -O --brew-verify       # diff: fast vs brew
+brew-hop-search -O                     # show outdated (local)
+brew-hop-search -O --brew-verify       # diff: bhs vs brew
 brew-hop-search -H python@3.13         # version history for rollback
 brew-hop-search --refresh python       # force re-fetch
 ```
@@ -191,7 +191,7 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 | Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
 | Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
 | Outdated | `-O` | Compares installed vs API index | No |
-| Outdated | `-O --brew-verify` | Diff fast vs `brew outdated` | Yes |
+| Outdated | `-O --brew-verify` | Diff bhs vs `brew outdated` | Yes |
 
 ## Docs
 
@@ -204,7 +204,7 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 ## Version
 
 ```
-brew-hop-search 0.3.0+011f10c
+brew-hop-search 0.3.0+d67c208
 ```
 
 ## License
