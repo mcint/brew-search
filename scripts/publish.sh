@@ -7,7 +7,7 @@
 set -euo pipefail
 
 INIT_FILE="src/brew_hop_search/__init__.py"
-version=$(grep -oP '(?<=__version__ = ")[^"]+' "$INIT_FILE")
+version=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
 
 echo "Version: $version"
 

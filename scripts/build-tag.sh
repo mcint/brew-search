@@ -14,7 +14,7 @@ set -euo pipefail
 INIT_FILE="src/brew_hop_search/__init__.py"
 
 # Extract current version
-version=$(grep -oP '(?<=__version__ = ")[^"]+' "$INIT_FILE")
+version=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
 if [ -z "$version" ]; then
     echo "Could not find __version__ in $INIT_FILE" >&2
     exit 1

@@ -8,7 +8,7 @@ INIT_FILE="src/brew_hop_search/__init__.py"
 PYPROJECT="pyproject.toml"
 
 # Extract current version
-current=$(grep -oP '(?<=__version__ = ")[^"]+' "$INIT_FILE")
+current=$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' "$INIT_FILE")
 if [ -z "$current" ]; then
     echo "Could not find __version__ in $INIT_FILE" >&2
     exit 1
