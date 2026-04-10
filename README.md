@@ -22,47 +22,137 @@ brew install brew-hop-search
 
 ## Example output
 
+Default search — clean, human-optimal:
 ```
-  cache: 2h old   searching formula + cask
-
-  # formulae (5/8307)  • brew install python-argcomplete
-  f python-argcomplete  3.6.3  Tab completion for Python argparse       │ https://kislyuk.github.io/argcomplete/
-  f python-build        1.4.2  Simple, correct PEP 517 build frontend   │ https://github.com/pypa/build
-  f python-freethreading 3.14.3 Interpreted, interactive, object-oriented│ https://www.python.org/
-  f python-gdbm@3.11    3.11.15 Python interface to gdbm                │ https://www.python.org/
-  f python-gdbm@3.12    3.12.13 Python interface to gdbm                │ https://www.python.org/
-
-  # casks (5/7589)  • brew install --cask anaconda
-  c anaconda     2025.12  Distribution of Python and R for scientific computing │ https://www.anaconda.com/
-  c drawbot      3.132    Write Python scripts to generate 2D graphics          │ https://www.drawbot.com/
-  c pycharm-ce   2025.2   IDE for Python programming - Community Edition        │ https://www.jetbrains.com/pycharm/
+  # formulae (5/8306)  • brew install python-argcomplete
+    python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
+    python-build  1.4.2  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
+    python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
+    python-gdbm@3.11  3.11.15  Python interface to gdbm  │ https://www.python.org/
+    python-gdbm@3.12  3.12.13  Python interface to gdbm  │ https://www.python.org/
+  # casks (5/7596)  • brew install --cask anaconda
+    anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
+    armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
+    chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
+    drawbot  3.132  Write Python scripts to generate two-dimensional graphics  │ https://www.drawbot.com/
+    pycharm-ce  2025.2.5,252.28238.29  IDE for Python programming - Community Edition  │ https://www.jetbrains.com/pycharm/
 ```
 
-Source indicators: `f`=formula `c`=cask `t`=tap `i`=installed (colored on TTY).
+With `-v` — source tags and cache info:
+```
+  -- cache: 1h26m old   searching formula + cask
+  # formulae (5/8306)  • brew install python-argcomplete
+  f python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
+  f python-build  1.4.2  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
+  f python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
+  f python-gdbm@3.11  3.11.15  Python interface to gdbm  │ https://www.python.org/
+  f python-gdbm@3.12  3.12.13  Python interface to gdbm  │ https://www.python.org/
+  # casks (5/7596)  • brew install --cask anaconda
+  c anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
+  c armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
+  c chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
+  c drawbot  3.132  Write Python scripts to generate two-dimensional graphics  │ https://www.drawbot.com/
+  c pycharm-ce  2025.2.5,252.28238.29  IDE for Python programming - Community Edition  │ https://www.jetbrains.com/pycharm/
+```
 
-Quiet mode (`-q`) strips all chrome for piping:
+Quiet mode (`-q`) for piping:
 ```
 $ brew-hop-search -q python | fzf
-python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://...
+python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
+python-build  1.4.2  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
+python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
+anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
+armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
+chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
+```
+
+## Output formats
+
+### CSV (`--csv`)
+```csv
+source,name,version,description,homepage
+f,python-argcomplete,3.6.3,Tab completion for Python argparse,https://kislyuk.github.io/argcomplete/
+f,python-build,1.4.2,"Simple, correct PEP 517 build frontend",https://github.com/pypa/build
+f,python-freethreading,3.14.4,"Interpreted, interactive, object-oriented programming language",https://www.python.org/
+c,anaconda,2025.12-2,Distribution of the Python and R programming languages for scientific computing,https://www.anaconda.com/
+c,armory,0.96.5,Python-Based Bitcoin Software,https://btcarmory.com/
+c,chia,2.7.0,GUI Python implementation for the Chia blockchain,https://www.chia.net/
+```
+
+### Table (`--table`)
+```
+S  Name                  Ver                    Description                                         Homepage                              
+-  --------------------  ---------------------  --------------------------------------------------  --------------------------------------
+f  python-argcomplete    3.6.3                  Tab completion for Python argparse                  https://kislyuk.github.io/argcomplete/
+f  python-build          1.4.2                  Simple, correct PEP 517 build frontend              https://github.com/pypa/build         
+f  python-freethreading  3.14.4                 Interpreted, interactive, object-oriented program…  https://www.python.org/               
+f  python-gdbm@3.11      3.11.15                Python interface to gdbm                            https://www.python.org/               
+f  python-gdbm@3.12      3.12.13                Python interface to gdbm                            https://www.python.org/               
+c  anaconda              2025.12-2              Distribution of the Python and R programming lang…  https://www.anaconda.com/             
+c  armory                0.96.5                 Python-Based Bitcoin Software                       https://btcarmory.com/                
+c  chia                  2.7.0                  GUI Python implementation for the Chia blockchain   https://www.chia.net/                 
+c  drawbot               3.132                  Write Python scripts to generate two-dimensional …  https://www.drawbot.com/              
+c  pycharm-ce            2025.2.5,252.28238.29  IDE for Python programming - Community Edition      https://www.jetbrains.com/pycharm/    
+```
+
+Also: `--tsv`, `--json`, `--sql`, `-g` (grep).
+
+## Cache status (`-C`)
+
+```
+  db  brew-hop-search/brew-hop-search.db  61.5 MB
+  formula    8306  1h26m ago  fts  30MB json
+  cask    7596  1h26m ago  fts  14MB json
+  installed:f     460  3m ago
+  installed:c      85  3m ago
+  taps      49  56m ago
+  local:f     160  1d23h ago
+  local:c      59  1d23h ago
 ```
 
 ## Usage
 
 ```
-usage: brew-hop-search [-fcitL] [-gq|--json] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
+usage: brew-hop-search [-fcitL] [-gq|--json|--csv|--tsv|--table|--sql] [-n N[+OFF]] [--refresh[=DUR]] [-VCOH] [query ...]
+
+Fast offline-first Homebrew formula/cask search.
+
+positional arguments:
+  query                 search terms (AND-matched)
+
+options:
+  -h, --help            show this help message and exit
 
 sources (composable, default: remote API):
-  -f  formulae only         -i  installed packages
-  -c  casks only            -t  tapped repos
-                            -L  local API cache (offline)
+  -f, --formulae, --formula
+                        formulae only
+  -c, --casks, --cask   casks only
+  -i, --installed       installed packages
+  -t, --taps            tapped repos
+  -L, --local           local API cache (offline)
 
-output:                     cache:
-  -g  tab-separated           --refresh[=DUR]  sync refresh
-  -q  quiet (for grep/fzf)    --stale[=DUR]    background threshold (6h)
-  --json  raw JSON
-  -n N[+OFF]  limit/offset  info:
-  -v  process detail          -V  version  -C  cache status
-                              -O  outdated -H  history
+output:
+  -g, --grep            tab-separated for piping
+  -q, --quiet           results only (for grep/fzf)
+  --json                raw JSON
+  --csv                 CSV output
+  --tsv                 tab-separated with header
+  --table               aligned columns (like sqlite3 -column)
+  --sql                 SQLite INSERT statements
+  -n N[+OFF], --limit N[+OFF]
+                        max results [+offset], 0=all (default: 20)
+  -v, --verbose         source tags, cache info (-vv per-source detail)
+
+cache:
+  --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
+  --stale [DUR]         background refresh threshold (default: 6h)
+
+info:
+  -V, --version         version (-VV: commits + PyPI)
+  -C, --cache-status    cache status
+  -O, --outdated        outdated packages
+  --brew-verify         use brew for -O (slower, authoritative)
+  -H, --history         version history for rollback
 ```
 
 ### Examples
@@ -72,19 +162,18 @@ brew-hop-search python                 # search formulae + casks
 brew-hop-search -f python build        # multi-word, formulae only
 brew-hop-search -i                     # list all installed
 brew-hop-search -i -c                  # installed casks only
-brew-hop-search -i -t python           # search installed + taps
 brew-hop-search -q python | fzf        # pipe to fzf
-brew-hop-search -n 10+20 python        # 10 results, skip 20
+brew-hop-search --csv python | qsv sort -s name  # sort CSV
+brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
 brew-hop-search -O                     # show outdated (fast, local)
-brew-hop-search -O --brew-verify       # outdated via brew (authoritative)
+brew-hop-search -O --brew-verify       # diff: fast vs brew
 brew-hop-search -H python@3.13         # version history for rollback
 brew-hop-search --refresh python       # force re-fetch
-brew-hop-search --refresh=1h python    # refresh if older than 1h
 ```
 
 ### Direct DB access
 
-The SQLite database is at `~/.cache/brew-hop-search/brew-hop-search.db` and is fully compatible with [sqlite-utils](https://sqlite-utils.datasette.io/):
+The SQLite database is at `~/.cache/brew-hop-search/brew-hop-search.db`:
 
 ```sh
 sqlite-utils tables ~/.cache/brew-hop-search/brew-hop-search.db
@@ -99,10 +188,24 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 |--------|------|------|-------------|
 | Remote API | *(default)* | `formulae.brew.sh` | No |
 | Installed | `-i` | `brew info --json=v2 --installed` | Yes |
-| Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes (`--repository`) |
-| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes (`--cache`) |
+| Taps | `-t` | `.rb` files in `$(brew --repo)/Library/Taps/` | Yes |
+| Local | `-L` | Brew's API cache at `$(brew --cache)/api/` | Yes |
 | Outdated | `-O` | Compares installed vs API index | No |
-| Outdated | `-O --brew-verify` | `brew outdated --json=v2` | Yes |
+| Outdated | `-O --brew-verify` | Diff fast vs `brew outdated` | Yes |
+
+## Docs
+
+- [Design System](docs/DESIGN-SYSTEM.md) — cartesian spec architecture
+- [Specs](docs/specs/) — INPUT, OUTPUT, ENVELOPE, SCHEMA, per-feature
+- [Comparables](docs/COMPARABLES.md) — Python project references
+- [Least Surprise](docs/LEAST-SURPRISE.md) — operational principles
+- [Man page](docs/brew-hop-search.1.md) — full reference
+
+## Version
+
+```
+brew-hop-search 0.3.0+011f10c
+```
 
 ## License
 
