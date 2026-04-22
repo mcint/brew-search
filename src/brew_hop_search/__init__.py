@@ -97,6 +97,22 @@ def version_info() -> str:
     return f"{__version__}{suffix}"
 
 
+def dev_marker() -> str:
+    """`(dev: hash[+dirty])` suffix for local builds, empty string otherwise.
+
+    Keeps the base version string standards-compliant (PEP 440) while still
+    surfacing a reproducibility hint when running from a dev checkout.
+    """
+    if install_source() != "local":
+        return ""
+    h = commit_hash()
+    if not h:
+        return ""
+    bi = build_info()
+    dirty = bi.get("dirty") if bi else _live_dirty()
+    return f"(dev: {h}{'+dirty' if dirty else ''})"
+
+
 def install_source() -> str:
     """Where the running package came from: 'local', 'brew', 'pypi', 'unknown'.
 

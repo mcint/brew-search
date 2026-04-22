@@ -32,13 +32,13 @@ Detected at runtime:
 Local dev (anything with a git work tree):
 
 ```
-brew-hop-search 0.3.5+ee99406
+brew-hop-search 0.3.5 (dev: ee99406)
 ```
 
 or with uncommitted changes:
 
 ```
-brew-hop-search 0.3.5+ee99406.dirty
+brew-hop-search 0.3.5 (dev: ee99406+dirty)
 ```
 
 Brew / PyPI install:
@@ -47,17 +47,17 @@ Brew / PyPI install:
 brew-hop-search 0.3.5
 ```
 
-The hash on local builds is a deterministic reproducibility marker. Clean
-installs omit it because the plain version already uniquely identifies
-what's running.
+The base version is always a clean PEP 440 string; the `(dev: …)` marker
+is a clearly-separated reproducibility hint that only appears on local
+builds.
 
 ### Detailed (`-VV`)
 
-Always includes the commit hash on the first line, plus an `install` field
-and the rest of the diagnostic card:
+Same first line as `-V`; adds an `install` field and the rest of the
+diagnostic card:
 
 ```
-brew-hop-search 0.3.5+ee99406
+brew-hop-search 0.3.5 (dev: ee99406)
   version     0.3.5
   commit      ee99406
   install     local

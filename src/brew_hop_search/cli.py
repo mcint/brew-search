@@ -177,20 +177,17 @@ def _show_history(name: str, as_json: bool = False) -> None:
 
 def _show_version(level: int) -> None:
     from brew_hop_search import (
-        __version__, version_info, commit_hash, install_source, user_agent,
+        __version__, commit_hash, install_source, dev_marker, user_agent,
         PYPI_URL, GITHUB_URL, BREW_TAP_URL,
     )
     src = install_source()
+    marker = dev_marker()
+    header = f"brew-hop-search {__version__}"
+    if marker:
+        header += f" {marker}"
+    print(header)
     if level < 2:
-        # Local dev shows the hash (+ dirty) as a reproducibility marker.
-        # Brew / pypi installs show the plain version.
-        if src == "local":
-            print(f"brew-hop-search {version_info()}")
-        else:
-            print(f"brew-hop-search {__version__}")
         return
-    vi = version_info()
-    print(f"brew-hop-search {vi}")
     if level >= 2:
         h = commit_hash()
         print(f"  {bold('version')}     {__version__}")
