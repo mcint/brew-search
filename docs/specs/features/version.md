@@ -32,13 +32,13 @@ Detected at runtime:
 Local dev (anything with a git work tree):
 
 ```
-brew-hop-search 0.3.5 (dev: ee99406)
+brew-hop-search 0.3.5 (dev+12: ee99406)
 ```
 
 or with uncommitted changes:
 
 ```
-brew-hop-search 0.3.5 (dev: ee99406+dirty)
+brew-hop-search 0.3.5 (dev+12: ee99406+dirty)
 ```
 
 Brew / PyPI install:
@@ -57,7 +57,7 @@ Same first line as `-V`; adds an `install` field and the rest of the
 diagnostic card:
 
 ```
-brew-hop-search 0.3.5 (dev: ee99406)
+brew-hop-search 0.3.5 (dev+12: ee99406)
   version     0.3.5
   commit      ee99406
   install     local
@@ -157,7 +157,9 @@ for the concrete version:
 Result (PEP 440): `X.Y.Z.devN+hash[.dirty]`. Example: `0.3.6.dev12+ee99406`.
 
 Display (`-V` / `-VV` first line) splits base from marker for readability:
-`brew-hop-search 0.3.6 (dev: ee99406+12[+dirty])`.
+`brew-hop-search 0.3.6 (dev+12: ee99406[+dirty])`. The `dev+N` label
+reads as "dev build, N commits past the last release"; the identifier
+after the colon is the specific commit (optionally `+dirty`).
 
 ### Release promotion
 

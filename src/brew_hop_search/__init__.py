@@ -101,11 +101,11 @@ def base_version() -> str:
 
 
 def dev_marker() -> str:
-    """`(dev: hash+N[+dirty])` display marker for dev builds, `""` otherwise.
+    """`(dev+N: hash[+dirty])` display marker for dev builds, `""` otherwise.
 
     Parses __version__ (already PEP 440 of form `base.devN+hash[.dirty]` for
-    dev builds). Keeps the printed base version clean while still surfacing
-    commit hash, distance from last tag, and dirty state.
+    dev builds). `N` (commits since last release tag) is part of the label;
+    hash and optional `+dirty` follow the colon as the specific identifier.
     """
     v = __version__
     if ".dev" not in v:
@@ -113,11 +113,10 @@ def dev_marker() -> str:
     _, _, rest = v.partition(".dev")
     n, _, local = rest.partition("+")
     if not local:
-        return f"(dev: +{n})"
+        return f"(dev+{n})"
     h, _, extra = local.partition(".")
-    dirty = extra == "dirty"
-    inner = f"{h}+{n}" + ("+dirty" if dirty else "")
-    return f"(dev: {inner})"
+    inner = h + ("+dirty" if extra == "dirty" else "")
+    return f"(dev+{n}: {inner})"
 
 
 def install_source() -> str:
