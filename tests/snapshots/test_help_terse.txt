@@ -10,6 +10,8 @@
     brew-hop-search -O                   # outdated
     brew-hop-search -q foo | fzf        # pipe to fzf
 
+  info:    -C cache status  ·  -V version  ·  -VV verbose & latest
+
   more help:
     --help                 full options
     --help=<section>      e.g. --help=sources, --help=output

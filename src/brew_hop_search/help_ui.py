@@ -78,6 +78,8 @@ def show_terse(parser: argparse.ArgumentParser) -> None:
     print(f"    brew-hop-search -O                   {dim('# outdated')}")
     print(f"    brew-hop-search -q foo | fzf        {dim('# pipe to fzf')}")
     print()
+    print(f"  {bold('info:')}    -C {dim('cache status')}  ·  -V {dim('version')}  ·  -VV {dim('verbose & latest')}")
+    print()
     print(f"  {bold('more help:')}")
     print(f"    --help                 full options")
     print(f"    --help={dim('<section>')}      e.g. --help=sources, --help=output")
