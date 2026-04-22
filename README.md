@@ -26,8 +26,8 @@ brew install brew-hop-search
 ```sh
 brew-hop-search python                 # search formulae + casks
 brew-hop-search -f python build        # multi-word, formulae only
+brew-hop-search -c -i                  # casks, installed only
 brew-hop-search -i                     # list all installed
-brew-hop-search -i -c                  # installed casks only
 brew-hop-search -q python | fzf        # pipe to fzf
 brew-hop-search --csv python | qsv sort -s name  # sort CSV
 brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
@@ -54,13 +54,13 @@ On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` 
 
 Default search — clean, human-optimal:
 ```
-  # formulae (5/8314)  • brew install python-argcomplete
+  # formulae (5/8316)  • brew install python-argcomplete
     python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
     python-build  1.4.3  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
     python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
     python-gdbm@3.11  3.11.15  Python interface to gdbm  │ https://www.python.org/
     python-gdbm@3.12  3.12.13  Python interface to gdbm  │ https://www.python.org/
-  # casks (5/7627)  • brew install --cask anaconda
+  # casks (5/7629)  • brew install --cask anaconda
     anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
     armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
     chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
@@ -70,14 +70,14 @@ Default search — clean, human-optimal:
 
 With `-v` — source tags and cache info:
 ```
-  -- cache: 2d23h old   searching formula + cask
-  # formulae (5/8314)  • brew install python-argcomplete
+  -- cache: 10m old   searching formula + cask
+  # formulae (5/8316)  • brew install python-argcomplete
   f python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
   f python-build  1.4.3  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
   f python-freethreading  3.14.4  Interpreted, interactive, object-oriented programming language  │ https://www.python.org/
   f python-gdbm@3.11  3.11.15  Python interface to gdbm  │ https://www.python.org/
   f python-gdbm@3.12  3.12.13  Python interface to gdbm  │ https://www.python.org/
-  # casks (5/7627)  • brew install --cask anaconda
+  # casks (5/7629)  • brew install --cask anaconda
   c anaconda  2025.12-2  Distribution of the Python and R programming languages for scientific computing  │ https://www.anaconda.com/
   c armory  0.96.5  Python-Based Bitcoin Software  │ https://btcarmory.com/
   c chia  2.7.0  GUI Python implementation for the Chia blockchain  │ https://www.chia.net/
@@ -131,10 +131,10 @@ Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (g
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.6 MB
-  formula    8314  2d23h ago  fts  30MB json
-  cask    7627  2d23h ago  fts  14MB json
-  installed:f     460  2d17h ago
-  installed:c      86  2d17h ago
+  formula    8316  10m ago  fts  30MB json
+  cask    7629  10m ago  fts  14MB json
+  installed:f     460  1m ago
+  installed:c      86  1m ago
   taps      50  3d9h ago
   local:f     161  3d9h ago
   local:c      59  3d9h ago
@@ -206,12 +206,11 @@ sqlite-utils search ~/.cache/brew-hop-search/brew-hop-search.db formula python
 ## Version
 
 ```
-brew-hop-search 0.3.5+639ba7e
+brew-hop-search 0.3.5+c15df7d
 ```
 
 ## License
 
 [MPL-2.0](LICENSE) — file-level copyleft. Fixes to covered files come
 back as MPL; new files and downstream projects can pick their own
-license. See [claude-collab/licenses.md](../claude-collab/licenses.md)
-for the rationale.
+license.

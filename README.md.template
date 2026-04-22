@@ -26,8 +26,8 @@ brew install brew-hop-search
 ```sh
 brew-hop-search python                 # search formulae + casks
 brew-hop-search -f python build        # multi-word, formulae only
+brew-hop-search -c -i                  # casks, installed only
 brew-hop-search -i                     # list all installed
-brew-hop-search -i -c                  # installed casks only
 brew-hop-search -q python | fzf        # pipe to fzf
 brew-hop-search --csv python | qsv sort -s name  # sort CSV
 brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
@@ -121,5 +121,4 @@ sqlite-utils search ~/.cache/brew-hop-search/brew-hop-search.db formula python
 
 [MPL-2.0](LICENSE) — file-level copyleft. Fixes to covered files come
 back as MPL; new files and downstream projects can pick their own
-license. See [claude-collab/licenses.md](../claude-collab/licenses.md)
-for the rationale.
+license.
