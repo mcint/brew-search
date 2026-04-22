@@ -72,10 +72,10 @@ VERSION=$(tr -d '[:space:]' < "$VERSION_FILE")
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TAG=""
 
-# ── Auto-promote .devN → release ─────────────────────────────
-if [[ "$VERSION" == *.dev* ]]; then
+# ── Auto-promote -dev → release ──────────────────────────────
+if [[ "$VERSION" == *-dev ]]; then
     if $DRY; then
-        promoted=${VERSION%.dev*}
+        promoted=${VERSION%-dev}
         echo "(dry-run: would promote $VERSION → $promoted and commit)"
         VERSION="$promoted"
     else

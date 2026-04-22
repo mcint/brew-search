@@ -117,6 +117,69 @@ review the diff before committing.
 ## Examples
 
 ```sh
-brew-hop-search -V        # quick version (hash on local dev only)
+brew-hop-search -V        # quick version (dev marker on dev builds)
 brew-hop-search -VV       # full diagnostic incl. install source
+```
+
+---
+
+## Release versioning scheme
+
+How the repo tracks version between releases — not a runtime feature, but
+relevant to how `__version__` and wheel metadata get their values.
+
+### Single source of truth
+
+`src/brew_hop_search/VERSION` is the only file storing the version. Hatch's
+dynamic version source (`[tool.hatch.version] source = "code"`) invokes
+`brew_hop_search._version_resolve.resolve_version()` at build time;
+`__init__.py` calls the same function at import time. No second copy in
+`pyproject.toml` or `__init__.py` to drift out of sync.
+
+### Between releases: the `-dev` suffix
+
+After publishing a release, `bump-version.sh --dev` writes `X.Y.(Z+1)-dev`
+to VERSION and commits it. The `-dev` marker makes the dev state an
+invariant that survives across checkouts — you can't accidentally produce
+a build with the same version as the released one, because the resolver
+always turns `-dev` into a concrete `devN` form before the build sees it.
+
+### `.devN` + commit hash resolution
+
+When VERSION ends in `-dev`, the resolver strips the suffix and asks git
+for the concrete version:
+
+- `N` = commits since the most recent `v*` tag
+  (`git rev-list vX.Y.Z..HEAD --count`)
+- `hash` = short HEAD (`git rev-parse --short HEAD`)
+- `.dirty` appended if the working tree has uncommitted changes
+
+Result (PEP 440): `X.Y.Z.devN+hash[.dirty]`. Example: `0.3.6.dev12+ee99406`.
+
+Display (`-V` / `-VV` first line) splits base from marker for readability:
+`brew-hop-search 0.3.6 (dev: ee99406+12[+dirty])`.
+
+### Release promotion
+
+`release.sh` auto-detects `X.Y.Z-dev` in VERSION, runs
+`bump-version.sh --release` to strip the suffix, commits the promotion as
+`Promote to release vX.Y.Z`, and tags. Tags always land on plain release
+versions, never `.devN`.
+
+### Resolution table
+
+| Context                    | `VERSION` contents  | `__version__` resolves to        |
+|----------------------------|---------------------|----------------------------------|
+| Between releases           | `0.3.6-dev`         | `0.3.6.dev12+ee99406[.dirty]`    |
+| Release commit / tag       | `0.3.6`             | `0.3.6`                          |
+| Installed wheel (release)  | `0.3.6`             | `0.3.6`                          |
+| Installed wheel (dev)      | `0.3.6-dev`         | wheel metadata from build time   |
+
+### Commands
+
+```sh
+make bump                # X.Y.Z → X.Y.(Z+1)  (release form)
+./scripts/bump-version.sh --dev      # X.Y.Z → X.Y.(Z+1)-dev
+./scripts/bump-version.sh --release  # X.Y.Z-dev → X.Y.Z (no-op otherwise)
+make version             # print current VERSION
 ```

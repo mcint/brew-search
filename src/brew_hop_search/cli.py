@@ -177,12 +177,12 @@ def _show_history(name: str, as_json: bool = False) -> None:
 
 def _show_version(level: int) -> None:
     from brew_hop_search import (
-        __version__, commit_hash, install_source, dev_marker, user_agent,
-        PYPI_URL, GITHUB_URL, BREW_TAP_URL,
+        __version__, base_version, commit_hash, install_source, dev_marker,
+        user_agent, PYPI_URL, GITHUB_URL, BREW_TAP_URL,
     )
     src = install_source()
     marker = dev_marker()
-    header = f"brew-hop-search {__version__}"
+    header = f"brew-hop-search {base_version()}"
     if marker:
         header += f" {marker}"
     print(header)

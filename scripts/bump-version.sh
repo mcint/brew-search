@@ -2,11 +2,14 @@
 # Version bumper with three modes:
 #
 #   bump-version.sh            # patch bump, release form  (0.3.1 → 0.3.2,
-#                              #   0.3.1.dev0 → 0.3.2)
-#   bump-version.sh --dev      # patch bump, add .dev0     (0.3.1 → 0.3.2.dev0);
-#                              # no-op if already .devN
-#   bump-version.sh --release  # strip .devN               (0.3.2.dev0 → 0.3.2);
-#                              # no-op if no .devN
+#                              #   0.3.1-dev → 0.3.2)
+#   bump-version.sh --dev      # patch bump, add -dev      (0.3.1 → 0.3.2-dev);
+#                              # no-op if already -dev
+#   bump-version.sh --release  # strip -dev                (0.3.2-dev → 0.3.2);
+#                              # no-op if no -dev
+#
+# The `-dev` suffix is a placeholder; the build/runtime version resolver
+# turns `X.Y.Z-dev` into `X.Y.Z.devN+HASH[.dirty]` using git.
 #
 # Prints "FROM → TO" on a real change, "no-op: VERSION" otherwise.
 # Exits 0 in both cases so callers can run it idempotently.
@@ -32,8 +35,8 @@ if [ -z "$current" ]; then
     exit 1
 fi
 
-# Split into base (X.Y.Z) and optional .devN suffix.
-if [[ "$current" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(\.dev[0-9]+)?$ ]]; then
+# Split into base (X.Y.Z) and optional -dev suffix.
+if [[ "$current" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-dev)?$ ]]; then
     base="${BASH_REMATCH[1]}"
     dev_suffix="${BASH_REMATCH[2]:-}"
 else
@@ -53,7 +56,7 @@ case "$MODE" in
             echo "no-op: $current (already dev)"
             exit 0
         fi
-        new_version="$major.$minor.$((patch + 1)).dev0"
+        new_version="$major.$minor.$((patch + 1))-dev"
         ;;
     release)
         if [ -z "$dev_suffix" ]; then

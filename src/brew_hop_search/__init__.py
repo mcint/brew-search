@@ -3,9 +3,10 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """brew-hop-search: fast offline-first Homebrew search."""
 import os
-from pathlib import Path
 
-__version__ = (Path(__file__).parent / "VERSION").read_text().strip()
+from brew_hop_search._version_resolve import resolve_version
+
+__version__ = resolve_version()
 
 PYPI_URL = "https://pypi.org/project/brew-hop-search/"
 GITHUB_URL = "https://github.com/mcint/brew-hop-search"
@@ -86,32 +87,37 @@ def _live_dirty() -> bool:
 
 
 def version_info() -> str:
-    """Version string with git commit hash; marks dirty builds."""
-    h = commit_hash()
-    if not h:
-        return __version__
-    bi = build_info()
-    dirty = bi.get("dirty") if bi else _live_dirty()
-    suffix = f"+{h}"
-    if dirty:
-        suffix += ".dirty"
-    return f"{__version__}{suffix}"
+    """Full PEP 440 version string (alias for __version__)."""
+    return __version__
+
+
+def base_version() -> str:
+    """Release-form base of __version__, stripping `.devN` and local labels."""
+    v = __version__
+    v = v.split("+", 1)[0]
+    if ".dev" in v:
+        v = v.split(".dev", 1)[0]
+    return v
 
 
 def dev_marker() -> str:
-    """`(dev: hash[+dirty])` suffix for local builds, empty string otherwise.
+    """`(dev: hash+N[+dirty])` display marker for dev builds, `""` otherwise.
 
-    Keeps the base version string standards-compliant (PEP 440) while still
-    surfacing a reproducibility hint when running from a dev checkout.
+    Parses __version__ (already PEP 440 of form `base.devN+hash[.dirty]` for
+    dev builds). Keeps the printed base version clean while still surfacing
+    commit hash, distance from last tag, and dirty state.
     """
-    if install_source() != "local":
+    v = __version__
+    if ".dev" not in v:
         return ""
-    h = commit_hash()
-    if not h:
-        return ""
-    bi = build_info()
-    dirty = bi.get("dirty") if bi else _live_dirty()
-    return f"(dev: {h}{'+dirty' if dirty else ''})"
+    _, _, rest = v.partition(".dev")
+    n, _, local = rest.partition("+")
+    if not local:
+        return f"(dev: +{n})"
+    h, _, extra = local.partition(".")
+    dirty = extra == "dirty"
+    inner = f"{h}+{n}" + ("+dirty" if dirty else "")
+    return f"(dev: {inner})"
 
 
 def install_source() -> str:
