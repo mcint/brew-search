@@ -19,6 +19,26 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
+# Print a tag message: title + "Changes since <prev tag>:" + bulleted log.
+# $1 = title (e.g. "Release 0.3.6"), $2 = prev-tag match mode: "release-only"
+# skips `-rc*` tags when finding the comparison base.
+_tag_message() {
+    local title="$1" mode="${2:-any}" prev_tag
+    if [ "$mode" = "release-only" ]; then
+        prev_tag=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-rc*' 2>/dev/null || true)
+    else
+        prev_tag=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+    fi
+    printf '%s\n\n' "$title"
+    if [ -n "$prev_tag" ]; then
+        printf 'Changes since %s:\n\n' "$prev_tag"
+        git log --pretty=format:'- %s' "${prev_tag}..HEAD"
+        printf '\n'
+    else
+        printf 'Initial tagged release.\n'
+    fi
+}
+
 case "${1:-}" in
     --list)
         git tag -l "v${version}*" --sort=-version:refname
@@ -34,7 +54,7 @@ case "${1:-}" in
             echo "Tag $tag already exists. Delete it first: git tag -d $tag" >&2
             exit 1
         fi
-        git tag -a "$tag" -m "Release ${version}"
+        _tag_message "Release ${version}" release-only | git tag -a "$tag" -F -
         echo "Tagged: $tag"
         echo "Push with: git push origin $tag"
         exit 0
@@ -46,7 +66,7 @@ case "${1:-}" in
             rc=$((rc + 1))
         done
         tag="v${version}-rc${rc}"
-        git tag -a "$tag" -m "Release candidate ${version}-rc${rc}"
+        _tag_message "Release candidate ${version}-rc${rc}" | git tag -a "$tag" -F -
         echo "Tagged: $tag"
         echo "Promote with: ./scripts/build-tag.sh --promote"
         exit 0
