@@ -11,7 +11,7 @@ import sys
 from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red, status_line
 
-DEFAULT_STALE = 3600  # re-index installed packages if older than 1h
+from brew_hop_search.defaults import STALE_INSTALLED as DEFAULT_STALE
 
 
 def _brew_installed_json() -> dict:

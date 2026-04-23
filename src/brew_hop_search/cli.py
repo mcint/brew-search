@@ -26,7 +26,7 @@ from brew_hop_search.display import (
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
 
-DEFAULT_STALE = 6 * 3600  # 6 hours
+from brew_hop_search.defaults import STALE_API as DEFAULT_STALE
 
 
 # ── duration parsing ─────────────────────────────────────────────────────────
@@ -308,10 +308,11 @@ def main(argv=None):
                      help="aligned columns (like sqlite3 -column)")
     fmt.add_argument("--sql", action="store_true",
                      help="SQLite INSERT statements")
+    from brew_hop_search.defaults import LIMIT as DEFAULT_LIMIT
     fmt.add_argument("-n", "--limit", type=str,
-                     default=os.environ.get("BREW_HOP_SEARCH_LIMIT", "20"),
+                     default=os.environ.get("BREW_HOP_SEARCH_LIMIT", DEFAULT_LIMIT),
                      metavar="N[+OFF]",
-                     help="max results [+offset], 0=all (default: 20, or $BREW_HOP_SEARCH_LIMIT)")
+                     help=f"max results [+offset], 0=all (default: {DEFAULT_LIMIT}, or $BREW_HOP_SEARCH_LIMIT)")
     fmt.add_argument("-v", "--verbose", action="count", default=0,
                      help="source tags, cache info (-vv per-source detail)")
 

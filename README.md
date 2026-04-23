@@ -40,7 +40,7 @@ brew-hop-search --refresh python       # force re-fetch
 
 ## How it works
 
-On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Stale caches trigger background refresh.
+On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Caches older than 6 hours trigger a background refresh on the next run; override with `--stale=DUR` or force immediate with `--refresh`.
 
 | Source | Flag | Data | Calls brew? |
 |--------|------|------|-------------|
@@ -71,7 +71,7 @@ Default search — clean, human-optimal:
 
 With `-v` — source tags and cache info:
 ```
-  -- cache: 38m old   searching formula + cask
+  -- cache: 2h59m old   searching formula + cask
   # formulae (5/8316)  • brew install python-argcomplete
   f python-argcomplete  3.6.3  Tab completion for Python argparse  │ https://kislyuk.github.io/argcomplete/
   f python-build  1.4.3  Simple, correct PEP 517 build frontend  │ https://github.com/pypa/build
@@ -132,13 +132,13 @@ Also: `--tsv`, `--json` (full) / `--json=short` (compact rows), `--sql`, `-g` (g
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.6 MB
-  formula    8316  38m ago  fts  30MB json
-  cask    7629  38m ago  fts  14MB json
-  installed:f     460  29m ago
-  installed:c      86  29m ago
-  taps      50  3d9h ago
-  local:f     161  3d9h ago
-  local:c      59  3d9h ago
+  formula    8316  2h59m ago  fts  30MB json
+  cask    7629  2h59m ago  fts  14MB json
+  installed:f     460  6m ago
+  installed:c      86  6m ago
+  taps      50  3d12h ago
+  local:f     161  3d12h ago
+  local:c      59  3d12h ago
 ```
 
 ## Usage
@@ -208,7 +208,7 @@ sqlite-utils search ~/.cache/brew-hop-search/brew-hop-search.db formula python
 ## Version
 
 ```
-brew-hop-search 0.3.5+8a9f2c8
+brew-hop-search 0.3.7 (dev+3: 206de5a+dirty)
 ```
 
 ## License

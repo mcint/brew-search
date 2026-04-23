@@ -15,9 +15,10 @@ from brew_hop_search.cache import (
 )
 from brew_hop_search.display import dim, red, status_line
 
+from brew_hop_search.defaults import API_TIMEOUT as TIMEOUT
+
 FORMULA_URL = "https://formulae.brew.sh/api/formula.json"
 CASK_URL = "https://formulae.brew.sh/api/cask.json"
-TIMEOUT = 10
 
 
 def fetch(url: str):

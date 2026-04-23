@@ -40,7 +40,7 @@ brew-hop-search --refresh python       # force re-fetch
 
 ## How it works
 
-On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Stale caches trigger background refresh.
+On first run, fetches Homebrew formula and cask indexes from `formulae.brew.sh` into SQLite with FTS5. Subsequent searches are instant (local DB). Caches older than 6 hours trigger a background refresh on the next run; override with `--stale=DUR` or force immediate with `--refresh`.
 
 | Source | Flag | Data | Calls brew? |
 |--------|------|------|-------------|

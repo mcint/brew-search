@@ -13,8 +13,9 @@ from brew_hop_search import __version__
 from brew_hop_search.cache import get_db
 from brew_hop_search.display import dim, yellow
 
+from brew_hop_search.defaults import VERSION_CHECK_INTERVAL as CHECK_INTERVAL
+
 PYPI_URL = "https://pypi.org/pypi/brew-hop-search/json"
-CHECK_INTERVAL = 4 * 3600  # 4 hours
 META_KEY = "version_check"
 
 

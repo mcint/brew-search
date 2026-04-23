@@ -13,7 +13,7 @@ from pathlib import Path
 from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red
 
-DEFAULT_STALE = 3600  # 1 hour
+from brew_hop_search.defaults import STALE_TAPS as DEFAULT_STALE
 
 
 def _brew_prefix() -> Path:
