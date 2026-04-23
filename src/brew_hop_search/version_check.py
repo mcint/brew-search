@@ -43,13 +43,23 @@ def _record_check() -> None:
 
 
 def _parse_version(v: str) -> tuple:
-    """Parse version string into comparable tuple."""
+    """Parse a version's numeric core into a comparable tuple.
+
+    Strips `+local`, `-dev`, and `.devN` bits so `0.3.7-dev` and `0.3.7`
+    both yield `(0, 3, 7)`. The upgrade-check only cares about whether
+    PyPI has a strictly-newer numeric release; exact PEP 440 pre-release
+    ordering isn't needed here.
+    """
+    v = v.split("+", 1)[0]
+    v = v.split("-", 1)[0]
+    if ".dev" in v:
+        v = v.split(".dev", 1)[0]
     parts = []
     for p in v.split("."):
         try:
             parts.append(int(p))
         except ValueError:
-            parts.append(p)
+            parts.append(0)
     return tuple(parts)
 
 
