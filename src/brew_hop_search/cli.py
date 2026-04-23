@@ -244,7 +244,10 @@ def main(argv=None):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
     )
-    ap.add_argument("query", nargs="*", help="search terms (AND-matched)")
+    ap.add_argument("query", nargs="*",
+                    help="search terms (AND-matched). Supports ^prefix, suffix$, "
+                         "^exact$, \"quoted phrase\", name:/desc: scope, !negate. "
+                         "See --help=query or man page for the full grammar.")
 
     # ── sources ──
     src = ap.add_argument_group("sources (composable, default: remote API)")

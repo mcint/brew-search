@@ -3,7 +3,9 @@ usage: brew-hop-search [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [
 Fast offline-first Homebrew formula/cask search.
 
 positional arguments:
-  query                 search terms (AND-matched)
+  query                 search terms (AND-matched). Supports ^prefix, suffix$,
+                        ^exact$, "quoted phrase", name:/desc: scope, !negate.
+                        See --help=query or man page for the full grammar.
 
 sources (composable, default: remote API):
   -f, --formulae, --formula

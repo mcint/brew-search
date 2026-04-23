@@ -16,6 +16,27 @@ background.
 
 Default searches never call `brew` — only HTTP or local DB reads.
 
+## QUERY SYNTAX
+
+Each whitespace-separated token is a *term*; every term must match (AND).
+A term has the shape `[field:][!][^]pattern[$]`:
+
+* *foo* — substring match in name OR description (default)
+* *^foo* — name/desc starts with `foo`
+* *foo$* — name/desc ends with `foo`
+* *^foo$* — exact equality
+* `"foo bar"` — literal substring including whitespace (quote in shell)
+* *name:foo* / *n:foo* — substring scoped to name/token
+* *desc:foo* / *d:foo* / *description:foo* — substring scoped to description
+* *!foo* — negate: no match may contain `foo`
+
+Field prefix, negation, and anchors may compose: `name:^py`,
+`!desc:"old api"`. Matching is case-insensitive. No regex in v1; `/foo/`
+matches the literal slashes.
+
+Quote terms that contain `^`, `$`, or `!` from the shell to avoid
+expansion: `'^python$'` or `"\"machine learning\""`.
+
 ## SOURCES
 
 Sources are composable. Default (no flags) searches the remote API index.
@@ -122,6 +143,11 @@ Pinned packages are marked `[pinned]`, keg-only as `[keg-only]`.
 
     brew-hop-search python              # search formulae + casks
     brew-hop-search -f python build     # multi-word, formulae only
+    brew-hop-search '^python'           # names starting with python
+    brew-hop-search '^python@3.13$'     # exact name match
+    brew-hop-search 'name:^py' d:build  # scoped name-prefix + desc term
+    brew-hop-search '"machine learning"'  # literal phrase with whitespace
+    brew-hop-search '^python' '!@3.9'   # prefix, excluding the 3.9 variant
     brew-hop-search -i                  # list all installed
     brew-hop-search -i -c               # installed casks only
     brew-hop-search -q python | fzf     # pipe to fzf

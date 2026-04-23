@@ -26,6 +26,8 @@ brew install brew-hop-search
 ```sh
 brew-hop-search python                 # search formulae + casks (top 20)
 brew-hop-search -f python build        # multi-word, formulae only
+brew-hop-search '^python' '!@3.9'      # anchored + negated terms (see --help=query)
+brew-hop-search 'name:^py' d:build     # scoped: name-prefix + desc term
 brew-hop-search -c -i                  # casks, installed only
 brew-hop-search -i -n0                 # all installed (-n|--limit: N, 0=all, N+offset for paging)
 # BREW_HOP_SEARCH_LIMIT=50 in your shell rc overrides the default 20

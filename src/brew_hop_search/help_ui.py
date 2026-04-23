@@ -80,6 +80,7 @@ def show_terse(parser: argparse.ArgumentParser) -> None:
     print(f"  {bold('quick examples:')}")
     print(f"    brew-hop-search python               {dim('# formulae + casks (top 20)')}")
     print(f"    brew-hop-search python -n 50         {dim('# top 50; -n 0 = all, -n 20+20 = page 2')}")
+    print(f"    brew-hop-search '^python' '!@3.9'    {dim('# prefix + negate (--help=query)')}")
     print(f"    brew-hop-search -i                   {dim('# installed packages')}")
     print(f"    brew-hop-search -O                   {dim('# outdated')}")
     print(f"    brew-hop-search -q foo | fzf        {dim('# pipe to fzf')}")
@@ -176,12 +177,54 @@ def _action_matches(action, key: str) -> bool:
     return False
 
 
+_QUERY_HELP = """\
+  query syntax
+
+    Each whitespace-separated term must match (AND). A term has the shape:
+
+        [field:][!][^]pattern[$]
+
+    form              meaning
+    ----------------  -------------------------------------------------
+    foo               substring in name OR description (default)
+    ^foo              name/desc starts with foo
+    foo$              name/desc ends with foo
+    ^foo$             exact equality
+    "foo bar"         literal substring including whitespace
+    name:foo          substring scoped to name/token (alias: n:)
+    desc:foo          substring scoped to description (aliases: d:, description:)
+    !foo              negate — no match may contain foo
+
+    combinations:
+        name:^py            prefix, name only
+        !desc:"old api"     negated scoped phrase
+
+  examples
+
+    brew-hop-search '^python'           # names starting with python
+    brew-hop-search '^python@3.13$'     # exact name match
+    brew-hop-search 'name:^py' d:build  # scoped name-prefix + desc term
+    brew-hop-search '"machine learning"'  # literal phrase
+    brew-hop-search '^python' '!@3.9'   # prefix, excluding 3.9 variant
+
+  notes
+
+    - Quote terms containing ^, $, !, or spaces to avoid shell expansion.
+    - Matching is case-insensitive.
+    - No regex in v1; /foo/ matches the literal slashes.
+"""
+
+
 def show_scoped(parser: argparse.ArgumentParser, mode: str) -> int:
     """Show help scoped to `mode` (section name or flag letter/name).
 
-    Resolution order: section title → flag option-string / dest →
-    error with did-you-mean.
+    Resolution order: "query" syntax → section title → flag option-string /
+    dest → error with did-you-mean.
     """
+    if mode.lower() in ("query", "syntax", "search", "q"):
+        sys.stdout.write(_QUERY_HELP)
+        return 0
+
     # Section?
     group = _group_by_title(parser, mode)
     if group is not None:
