@@ -134,25 +134,32 @@ def test_duration_formatting():
 
 
 def test_scoring():
-    from brew_hop_search.search import score
+    from brew_hop_search.search import score, parse_query
     # Exact match
-    assert score("python", "", ["python"]) == 100
+    assert score({"name": "python", "desc": ""}, parse_query("python")) == 100
     # Prefix match
-    assert score("python3", "", ["python"]) == 60
+    assert score({"name": "python3", "desc": ""}, parse_query("python")) == 60
     # Substring match
-    assert score("cpython", "", ["python"]) == 30
+    assert score({"name": "cpython", "desc": ""}, parse_query("python")) == 30
     # Description match
-    assert score("foo", "uses python", ["python"]) == 10
+    assert score({"name": "foo", "desc": "uses python"}, parse_query("python")) == 10
     # No match
-    assert score("foo", "bar", ["python"]) == 0
+    assert score({"name": "foo", "desc": "bar"}, parse_query("python")) == 0
     # All terms must match
-    assert score("python", "language", ["python", "java"]) == 0
+    assert score({"name": "python", "desc": "language"},
+                 parse_query("python java")) == 0
 
 
 def test_fts_query():
-    from brew_hop_search.search import fts_query
-    assert fts_query(["python"]) == '"python"*'
-    assert fts_query(["python", "build"]) == '"python"* AND "build"*'
+    from brew_hop_search.search import fts_query, parse_query
+    assert fts_query(parse_query("python")) == '"python"*'
+    assert fts_query(parse_query("python build")) == '"python"* AND "build"*'
+    # Anchored/negated/phrase terms drop out of the FTS pre-filter.
+    assert fts_query(parse_query("^python")) == ""
+    assert fts_query(parse_query("!foo")) == ""
+    assert fts_query(parse_query('"foo bar"')) == ""
+    # Mixed: plain term survives, anchored one does not.
+    assert fts_query(parse_query("python ^py")) == '"python"*'
 
 
 def test_rb_parser():
