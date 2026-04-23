@@ -9,11 +9,52 @@ you type `brew-hop-search python`.
 
 ## Input
 
-- **query**: Space-separated terms (AND-matched, all must hit)
+- **query**: Space-separated terms (AND-matched, all must hit). See
+  [Query Syntax](#query-syntax) for anchors, field scoping, phrases.
 - **sources**: `-f`, `-c`, `-i`, `-t`, `-L` (composable)
 - **paging**: `-n N[+OFF]` (default: 20)
 - **cache control**: `--refresh[=DUR]`, `--stale DUR`
 - **format**: `-q`, `-g`, `--json`, `--csv`, `--tsv`, `--table`, `--sql`, `-v`, `-vv`
+
+## Query Syntax
+
+Each whitespace-separated token is a **term**; every term must match (AND).
+A term has the shape `[field:][!][^]pattern[$]`:
+
+| Form            | Meaning                                                   |
+|-----------------|-----------------------------------------------------------|
+| `foo`           | substring match in name OR description (default scope)    |
+| `^foo`          | name/desc starts with `foo`                               |
+| `foo$`          | name/desc ends with `foo`                                 |
+| `^foo$`         | exact equality                                            |
+| `"foo bar"`     | literal substring including whitespace (quoted)           |
+| `name:foo`      | substring in name only (alias: `n:`)                      |
+| `desc:foo`      | substring in description only (aliases: `d:`, `description:`) |
+| `!foo`          | negate: no match may contain `foo`                        |
+| `name:^py`      | prefix, scoped to name                                    |
+| `!desc:"old "`  | negate a scoped phrase                                    |
+
+Combining rules:
+
+- `^` / `$` bind to the pattern; place them inside quotes is fine
+  (`"^foo"` = anchor, same as `^foo`).
+- Field prefix, negation, and anchors compose in any visual order but parse
+  as `field:` → `!` → `^pattern$` (canonical).
+- Matching is case-insensitive.
+- Multiple terms AND together; there is no OR operator in v1.
+- No regex support in v1; `/…/` is treated as a literal substring. (Tracked
+  as a future extension — see draft in `docs/specs/drafts/search-syntax.md`.)
+- To search for a literal `^`, `$`, or leading `!`, quote the term and the
+  anchors become part of the pattern only when *not* at start/end: `'py^3'`.
+
+Field scoping for non-formula sources:
+
+| Source         | `name:` matches against     | `desc:` matches against |
+|----------------|-----------------------------|-------------------------|
+| formula        | `name`                      | `desc`                  |
+| cask           | `token` OR `name` (array)   | `desc`                  |
+| tap            | `tap` OR `name`             | `desc`                  |
+| installed_*    | same as their non-installed counterparts |           |
 
 ## Output
 
@@ -114,16 +155,25 @@ SQLite INSERT statements. Pipe to `sqlite3` to build a queryable local table.
 
 ## Search Algorithm
 
-1. **FTS pass**: Query FTS5 index with `"term1"* AND "term2"*` (prefix, porter stemmer), fetch up to 200 candidates
-2. **Fallback**: If no FTS table, full table scan
-3. **Scoring**: Per-term additive scoring:
-   - Exact name match: +100
-   - Name starts with term: +60
+1. **Parse**: Query string → list of `Term(field, negate, anchor_start,
+   anchor_end, literal)`. Shlex-style quoting preserves whitespace.
+2. **FTS pass**: Build FTS5 query from the *unanchored*, *non-negated*,
+   *non-phrase* tokens as `"term"* AND …`; fetch up to 200 candidates.
+   Anchored/phrase/negated/field-scoped terms do not narrow the pre-filter —
+   they run in the post-filter.
+3. **Fallback**: If no FTS table, full table scan.
+4. **Post-filter**: Each candidate must satisfy every term's predicate
+   (field, anchor mode, literal, negation). Negated terms disqualify;
+   non-negated terms that don't match disqualify.
+5. **Scoring**: Per-term additive, on the matched side of the pair:
+   - Exact equality (effective `^foo$`): +100
+   - Prefix (`^foo`): +60
+   - Suffix (`foo$`): +40
    - Substring in name: +30
-   - Match in description: +10
-   - Any term unmatched: score = 0 (disqualified)
-4. **Sort**: Score descending, then name ascending
-5. **Slice**: Apply offset and limit
+   - Substring in description: +10
+   - Negated terms contribute 0 (already gated by step 4)
+6. **Sort**: Score descending, then name ascending.
+7. **Slice**: Apply offset and limit.
 
 ## Cache Behavior
 
@@ -146,4 +196,9 @@ brew-hop-search --csv python | qsv sort -s name  # sort by name
 brew-hop-search --tsv python | sort -t$'\t' -k3  # sort by version
 brew-hop-search --table python      # aligned columns
 brew-hop-search --sql python | sqlite3 results.db  # import to sqlite
+brew-hop-search '^python'           # names starting with python
+brew-hop-search '^python$'          # exact name python
+brew-hop-search 'name:^py' desc:build  # scoped: name prefix + desc term
+brew-hop-search '"machine learning"'   # literal phrase with whitespace
+brew-hop-search '^py' '!@3.9'       # starts with py, exclude 3.9 variant
 ```
