@@ -448,6 +448,36 @@ def main(argv=None):
     )
     args = ap.parse_args(normalized)
 
+    # Apply user-configured default output format only when no CLI format
+    # flag was passed. Priority: CLI flag > env var > TOML config > built-in
+    # TTY default. (See docs/specs/features/cache-flow.md and _config.py.)
+    _user_set_a_format_flag = bool(
+        args.json or args.csv or args.tsv or args.table
+        or args.sql or args.grep or args.multi or args.quiet
+    )
+    if not _user_set_a_format_flag:
+        from brew_hop_search._config import resolve_output_format
+        fmt_default = resolve_output_format()
+        if fmt_default == "json":
+            args.json = "full"
+        elif fmt_default == "json:short":
+            args.json = "short"
+        elif fmt_default == "csv":
+            args.csv = True
+        elif fmt_default == "tsv":
+            args.tsv = True
+        elif fmt_default == "table":
+            args.table = True
+        elif fmt_default == "sql":
+            args.sql = True
+        elif fmt_default == "grep":
+            args.grep = True
+        elif fmt_default == "multi":
+            args.multi = True
+        elif fmt_default == "quiet":
+            args.quiet = True
+        # "default" or None: leave args alone
+
     # ── help modes ──
     # -h / --help / -h=MODE / --help=MODE / --man all land here before
     # any other mode (no DB access, no network).

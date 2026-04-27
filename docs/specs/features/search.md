@@ -191,6 +191,31 @@ naturally for one-or-two-result lookups; pipes through `grep -A` cleanly.
 6. **Sort**: Score descending, then name ascending.
 7. **Slice**: Apply offset and limit.
 
+## Output Format Default
+
+The default output format (when no CLI format flag is passed) follows
+the precedence:
+
+    config.toml  →  $BREW_HOP_SEARCH_FORMAT  →  CLI flag
+
+Each layer overrides the previous. If none is set, the human-readable
+TTY default is used.
+
+```toml
+# ~/.config/brew-hop-search/config.toml
+[output]
+default = "multi"   # any of: default, multi/long, json, json:short,
+                    #         csv, tsv, table, sql, grep, quiet
+```
+
+```sh
+BREW_HOP_SEARCH_FORMAT=json bhs python    # session override
+bhs --csv python                          # one-shot override
+```
+
+Override the config path with `$BREW_HOP_SEARCH_CONFIG` (mainly for
+tests).
+
 ## Cache Behavior
 
 - **Default TTL**: Background refresh if older than 6h (`--stale`)
