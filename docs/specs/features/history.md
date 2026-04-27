@@ -32,6 +32,11 @@ upgrade broke things?"
 - Per-row: version, kind tag, timestamp, brew core commit hash
 - Footer: rollback and pin hints
 
+The `version` shown is the **actually-installed version** at log time, not
+whatever stable version the index pointed to. If multiple kegs of the same
+formula are installed side-by-side (e.g. `openssl@3` 3.4.0 and 3.4.1), each
+gets its own row.
+
 ### JSON
 
 ```json

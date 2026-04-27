@@ -42,7 +42,13 @@ def _ensure_table(db: sqlite_utils.Database) -> None:
 
 
 def record_installed(formulae: list[dict], casks: list[dict]) -> None:
-    """Record current installed packages, skipping versions already logged."""
+    """Record currently-installed package versions.
+
+    Records the *installed* version (from `installed[].version` for formulae,
+    `installed` field for casks) — not the index's currently-available
+    `versions.stable`. The latter would just snapshot whatever the brew core
+    repo points to at log time, which is what `git log` already records.
+    """
     db = get_db()
     _ensure_table(db)
     commit = _brew_commit()
@@ -50,8 +56,15 @@ def record_installed(formulae: list[dict], casks: list[dict]) -> None:
 
     rows = []
     for f in formulae:
-        ver = (f.get("versions") or {}).get("stable", "")
-        if ver:
+        installed_list = f.get("installed") or []
+        if not installed_list:
+            continue
+        # Multiple kegs of the same formula can be installed side-by-side;
+        # log each version separately so rollback knows about all of them.
+        for entry in installed_list:
+            ver = entry.get("version", "")
+            if not ver:
+                continue
             rows.append({
                 "name": f.get("name", ""),
                 "kind": "formula",
@@ -60,7 +73,8 @@ def record_installed(formulae: list[dict], casks: list[dict]) -> None:
                 "recorded_at": now,
             })
     for c in casks:
-        ver = str(c.get("version", ""))
+        # Casks: prefer `installed` (string) over `version` (cask's current).
+        ver = str(c.get("installed") or c.get("version") or "")
         if ver:
             rows.append({
                 "name": c.get("token", ""),
