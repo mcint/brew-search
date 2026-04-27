@@ -13,7 +13,7 @@ you type `brew-hop-search python`.
   [Query Syntax](#query-syntax) for anchors, field scoping, phrases.
 - **sources**: `-f`, `-c`, `-i`, `-t`, `-L` (composable)
 - **paging**: `-n N[+OFF]` (default: 20)
-- **cache control**: `--refresh[=DUR]`, `--stale DUR`
+- **cache control**: `--refresh[=DUR]` (alias: `--fresh`), `--stale DUR`
 - **format**: `-q`, `-g`, `--json`, `--csv`, `--tsv`, `--table`, `--sql`, `-v`, `-vv`
 
 ## Query Syntax

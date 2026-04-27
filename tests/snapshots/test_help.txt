@@ -26,7 +26,9 @@ info:
   -H, --history         version history for rollback
 
 cache:
-  --refresh [DUR]       sync refresh (bare: force, =DUR: if older)
+  --refresh [DUR], --fresh [DUR]
+                        sync refresh (bare: force, =DUR: if older); --fresh is
+                        an alias
   --stale [DUR]         background refresh threshold (default: 6h)
 
 output:

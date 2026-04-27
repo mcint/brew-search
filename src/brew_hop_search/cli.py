@@ -285,9 +285,10 @@ def main(argv=None):
 
     # ── cache ──
     cache = ap.add_argument_group("cache")
-    cache.add_argument("--refresh", nargs="?", type=parse_duration, const=0,
-                       default=None, metavar="DUR",
-                       help="sync refresh (bare: force, =DUR: if older)")
+    cache.add_argument("--refresh", "--fresh", nargs="?", type=parse_duration,
+                       const=0, default=None, metavar="DUR",
+                       help="sync refresh (bare: force, =DUR: if older); "
+                            "--fresh is an alias")
     cache.add_argument("--stale", nargs="?", type=parse_duration,
                        const=DEFAULT_STALE, default=None, metavar="DUR",
                        help="background refresh threshold (default: 6h)")

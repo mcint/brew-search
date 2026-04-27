@@ -114,6 +114,24 @@ def test_cache_status_json():
     assert "sources" in data
 
 
+def test_fresh_alias_in_help():
+    """--fresh should be exposed in --help as an alias of --refresh."""
+    out = run("--help")
+    assert "--refresh" in out and "--fresh" in out
+
+
+def test_fresh_alias_parses_same_as_refresh(tmp_path):
+    """--fresh=DUR parses without error when --refresh=DUR does."""
+    import os as _os
+    env = {**_os.environ, "BREW_HOP_SEARCH_DB": str(tmp_path / "x.db")}
+    # Bare --fresh: should be accepted (zero exit unless DB error)
+    r1 = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", "--fresh=99h", "-h"],
+        capture_output=True, text=True, env=env, timeout=10,
+    )
+    assert r1.returncode == 0, r1.stderr
+
+
 def test_duration_parsing():
     from brew_hop_search.cli import parse_duration
     assert parse_duration("30m") == 1800
