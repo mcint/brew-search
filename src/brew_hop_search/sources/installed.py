@@ -5,32 +5,46 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
-from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
+from brew_hop_search.cache import (
+    get_db, import_to_db, table_age, table_exists,
+    sentinel_path, register_pending_refresh,
+)
 from brew_hop_search.display import dim, red, status_line
 
 from brew_hop_search.defaults import stale_installed_seconds
 
 
-def _brew_installed_json() -> dict:
-    """Run `brew info --json=v2 --installed` and return parsed JSON."""
+# `brew info --json=v2 --installed` can be slow on large brew installs.
+# Foreground (sync) timeout: snappy bound. Background timeout: generous.
+_FG_TIMEOUT = 60
+_BG_TIMEOUT = 300
+
+
+def _brew_installed_json(timeout: int = _FG_TIMEOUT) -> dict:
+    """Run `brew info --json=v2 --installed` and return parsed JSON.
+
+    `timeout` is bumped from the foreground 60s default to 300s when this
+    runs as a background refresh — a slow brew shouldn't block the user.
+    """
     result = subprocess.run(
         ["brew", "info", "--json=v2", "--installed"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, timeout=timeout,
     )
     if result.returncode != 0:
         raise RuntimeError(f"brew info failed: {result.stderr.strip()}")
     return json.loads(result.stdout)
 
 
-def refresh(silent: bool = False) -> bool:
+def refresh(silent: bool = False, timeout: int = _FG_TIMEOUT) -> bool:
     prefix = "[installed]"
     if not silent:
         status_line(dim(f"  {prefix} querying brew \u2026"))
     try:
-        data = _brew_installed_json()
+        data = _brew_installed_json(timeout=timeout)
         db = get_db()
 
         # Formulae
@@ -86,15 +100,48 @@ def refresh(silent: bool = False) -> bool:
         return False
 
 
-def ensure_cache(force: bool = False, stale: int | None = None) -> bool:
+def background_refresh() -> None:
+    """Spawn a detached subprocess to rerun `brew info`. Returns immediately."""
+    try:
+        spath = sentinel_path("installed", os.getpid())
+        try:
+            spath.unlink()
+        except FileNotFoundError:
+            pass
+        env = {**os.environ, "BHS_REFRESH_SENTINEL": str(spath)}
+        subprocess.Popen(
+            [sys.executable, "-m", "brew_hop_search._bg_installed"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            env=env,
+        )
+        register_pending_refresh("installed", spath)
+    except Exception:
+        pass
+
+
+def ensure_cache(force: bool = False, stale: int | None = None,
+                 allow_bg: bool = True) -> bool:
+    """Cache-first: serve from disk if it exists, refresh in background if stale.
+
+    Args:
+      force:    Synchronous refresh regardless of age.
+      stale:    Override stale threshold (seconds). None → defaults().
+      allow_bg: When True (default), stale-but-present cache → bg refresh
+                instead of blocking. Off in --_bg-refresh subprocesses to
+                avoid recursion.
+    """
     if stale is None:
         stale = stale_installed_seconds()
     db = get_db()
-    needs_sync = force or not table_exists(db, "installed_formula")
-    if not needs_sync:
-        age = table_age(db, "installed_formula")
-        if age > stale:
-            needs_sync = True
-    if needs_sync:
+    has_cache = table_exists(db, "installed_formula")
+    if force or not has_cache:
         return refresh()
+    age = table_age(db, "installed_formula")
+    if age > stale:
+        if allow_bg:
+            background_refresh()
+        else:
+            return refresh()
     return True

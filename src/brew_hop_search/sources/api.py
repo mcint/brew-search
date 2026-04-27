@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from urllib.error import URLError
@@ -85,13 +86,33 @@ def refresh(kind: str, url: str, silent: bool = False) -> bool:
 
 
 def background_refresh(kind: str, url: str) -> None:
+    """Spawn a detached subprocess to refresh `kind`. Returns immediately.
+
+    The subprocess writes a sentinel file at completion (`cache.write_sentinel`)
+    so the foreground process can render a trailing status line + duration.
+    """
+    from brew_hop_search.cache import sentinel_path, register_pending_refresh
     try:
+        # Pre-allocate the sentinel path so we know where to look. Pass it
+        # to the subprocess via env so the bg process writes there.
+        # We don't yet know the bg pid, so use the parent's pid in the path
+        # — uniqueness is per (kind, parent-pid) which is sufficient since
+        # the foreground process inspects only its own sentinels.
+        spath = sentinel_path(kind, os.getpid())
+        # Clean any stale prior sentinel from a previous invocation.
+        try:
+            spath.unlink()
+        except FileNotFoundError:
+            pass
+        env = {**os.environ, "BHS_REFRESH_SENTINEL": str(spath)}
         subprocess.Popen(
             [sys.executable, "-m", "brew_hop_search.cli", "--_bg-refresh", kind, url],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
+            env=env,
         )
+        register_pending_refresh(kind, spath)
     except Exception:
         pass
 

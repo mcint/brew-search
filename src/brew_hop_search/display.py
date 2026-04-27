@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 
 
 # ── duration formatting ──────────────────────────────────────────────────────
@@ -54,6 +55,73 @@ def status_line(msg: str, done: bool = False) -> None:
     else:
         if done:
             print(msg, file=sys.stderr)
+
+
+def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 300.0,
+                            poll: float = 0.1) -> None:
+    """Block until pending bg refreshes complete (or ^C). TTY+stderr only.
+
+    Called at the end of main() — after results are printed and stdout
+    flushed — when there are background refreshes in flight. Prints an
+    "updating …" line, polls each sentinel, and overwrites the line with
+    a per-kind ✓/✗ + duration when done. ^C exits immediately and lets
+    the bg processes keep running (they have their own session).
+    """
+    from brew_hop_search.cache import pending_refreshes, read_sentinel
+    pending = pending_refreshes()
+    if not pending:
+        return
+    if not USE_COLOR_STDERR:
+        return  # Non-TTY: don't block pipelines on bg refresh.
+
+    kinds = sorted({k for k, _, _ in pending})
+    kinds_str = ",".join(kinds)
+    status_line(dim(f"  # [cache] updating {kinds_str} … (^C to skip)"))
+
+    deadline = time.time() + max_wait
+    remaining = list(pending)
+    results: list[tuple[str, int, bool, str]] = []
+    try:
+        while remaining and time.time() < deadline:
+            still: list[tuple[str, "Path", float]] = []
+            for kind, spath, started in remaining:
+                r = read_sentinel(spath)
+                if r is None:
+                    still.append((kind, spath, started))
+                else:
+                    duration_ms, ok, msg = r
+                    results.append((kind, duration_ms, ok, msg))
+                    try:
+                        spath.unlink()
+                    except FileNotFoundError:
+                        pass
+            remaining = still
+            if remaining:
+                time.sleep(poll)
+    except KeyboardInterrupt:
+        status_line(dim(f"  # [cache] {kinds_str} still updating in background"),
+                    done=True)
+        return
+
+    if remaining:
+        # Timed out
+        names = ",".join(k for k, _, _ in remaining)
+        status_line(dim(f"  # [cache] {names} still updating "
+                        f"(>{int(max_wait)}s)"), done=True)
+        return
+
+    # All complete — render one final line per kind, in original order.
+    by_kind = {k: (d, ok, msg) for k, d, ok, msg in results}
+    parts = []
+    for k in kinds:
+        d, ok, msg = by_kind[k]
+        secs = d / 1000.0
+        if ok:
+            parts.append(f"{k} {green('✓')} {secs:.1f}s")
+        else:
+            err = f" — {msg}" if msg else ""
+            parts.append(f"{k} {red('✗')}{err} {secs:.1f}s")
+    status_line(dim(f"  # [cache] {' · '.join(parts)}"), done=True)
 
 
 def _fmt_entry(name_styled: str, ver: str, desc: str, homepage: str,

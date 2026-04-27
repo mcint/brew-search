@@ -50,6 +50,28 @@ REFRESH_KINDS = frozenset({"index", "installed", "outdated",
                            "taps", "local", "all"})
 
 
+def force_refresh_for(args, kind: str) -> bool:
+    """Should source `kind` be force-refreshed for this invocation?
+
+    Inspects `args.refresh`:
+      - frozenset    → kind in set
+      - 0 (bare)     → True for everything
+      - else         → False
+    """
+    r = getattr(args, "refresh", None)
+    if isinstance(r, frozenset):
+        return kind in r
+    return r == 0
+
+
+def conditional_refresh_secs(args) -> int | None:
+    """`--refresh=DUR` form returns DUR seconds; otherwise None."""
+    r = getattr(args, "refresh", None)
+    if isinstance(r, int) and r > 0:
+        return r
+    return None
+
+
 def parse_refresh(s: str):
     """Accept a duration ('6h') or a comma-separated KIND list ('index,installed').
 
@@ -410,7 +432,22 @@ def main(argv=None):
     # ── background refresh mode ──
     if getattr(args, "_bg_refresh", None):
         kind, url = args._bg_refresh
-        api.refresh(kind, url, silent=True)
+        from brew_hop_search.cache import write_sentinel, append_refresh_log
+        sentinel = os.environ.get("BHS_REFRESH_SENTINEL")
+        start = time.time()
+        err = ""
+        try:
+            ok = api.refresh(kind, url, silent=True)
+        except Exception as e:
+            ok = False
+            err = str(e)[:200]
+        duration_ms = int((time.time() - start) * 1000)
+        if sentinel:
+            try:
+                write_sentinel(Path(sentinel), duration_ms, ok, err)
+            except Exception:
+                pass
+        append_refresh_log(kind, duration_ms, ok)
         return
 
     # ── version mode ──
@@ -452,6 +489,17 @@ def main(argv=None):
             fmt = "grep"
         # Suppress progress stderr when output must be silent
         silent_progress = (o_verbose == 0) or bool(args.json) or (fmt is not None)
+
+        # Cache-first: -O reads from existing tables and bg-refreshes any stale
+        # dependencies. -L skips network. --refresh promotes to sync.
+        if not args.local:
+            o_stale_api = args.stale if args.stale is not None else stale_api_seconds()
+            for k, url in [("formula", api.FORMULA_URL), ("cask", api.CASK_URL)]:
+                api.ensure_cache(k, url, force=force_refresh_for(args, "index"),
+                                 stale=o_stale_api,
+                                 fresh=conditional_refresh_secs(args))
+            installed.ensure_cache(force=force_refresh_for(args, "installed"))
+
         if args.brew_verify:
             fast_data = collect_outdated_fast()
             brew_data = collect_outdated_brew(silent=silent_progress)
@@ -462,6 +510,13 @@ def main(argv=None):
             data = collect_outdated(silent=silent_progress)
             display_outdated(data, kinds=kinds, verbose=o_verbose,
                              as_json=args.json, fmt=fmt)
+
+        # Trailing status: hold for any bg refresh kicked off above. Skipped
+        # when output is non-TTY or the user asked for machine-readable.
+        sys.stdout.flush()
+        if not args.quiet and not args.json and fmt is None:
+            from brew_hop_search.display import trailing_refresh_status
+            trailing_refresh_status(verbose=o_verbose)
         return
 
     # Join multi-word query
@@ -504,26 +559,10 @@ def main(argv=None):
         limit = 999999  # 0 = all
 
     stale = args.stale if args.stale is not None else stale_api_seconds()
-    # --refresh resolves to one of:
-    #   None        — no flag passed, use default cache-stale rules
-    #   0           — bare --refresh, force-refresh every source this command touches
-    #   int > 0     — --refresh=DUR, sync refresh if cache older than DUR
-    #   frozenset   — --refresh=KIND[,...], force-refresh only those kinds
-    refresh_kinds: frozenset[str] | None = None
-    force_refresh = False
-    fresh: int | None = None
-    if isinstance(args.refresh, frozenset):
-        refresh_kinds = args.refresh
-    elif args.refresh == 0:
-        force_refresh = True
-    elif isinstance(args.refresh, int) and args.refresh > 0:
-        fresh = args.refresh
+    fresh = conditional_refresh_secs(args)
 
     def _force(kind: str) -> bool:
-        """Should this source be force-refreshed for this invocation?"""
-        if refresh_kinds is not None:
-            return kind in refresh_kinds
-        return force_refresh
+        return force_refresh_for(args, kind)
 
     quiet = args.quiet
     # Verbosity levels: 0=quiet, 1=default, 2=-v, 3=-vv
@@ -667,6 +706,13 @@ def main(argv=None):
 
     if verbose >= 1 and total == 0:
         print(dim(f"  no results{f' for {query!r}' if query else ''}"))
+
+    # Trailing status: hold the terminal until any in-flight bg refreshes
+    # complete (or ^C). TTY-only — pipelines exit immediately.
+    sys.stdout.flush()
+    if not quiet:
+        from brew_hop_search.display import trailing_refresh_status
+        trailing_refresh_status(verbose=verbose)
 
 
 if __name__ == "__main__":
