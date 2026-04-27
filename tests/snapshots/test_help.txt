@@ -29,7 +29,8 @@ cache:
   --refresh [DUR], --fresh [DUR]
                         sync refresh (bare: force, =DUR: if older); --fresh is
                         an alias
-  --stale [DUR]         background refresh threshold (default: 6h)
+  --stale [DUR]         background refresh threshold (default: 6h,
+                        $BREW_HOP_SEARCH_STALE_API to override)
 
 output:
   -g, --grep            tab-separated for piping

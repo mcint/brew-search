@@ -12,7 +12,7 @@ from pathlib import Path
 from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red
 
-from brew_hop_search.defaults import STALE_LOCAL as DEFAULT_STALE
+from brew_hop_search.defaults import stale_local_seconds
 
 
 def _brew_cache_api() -> Path:
@@ -87,7 +87,9 @@ def refresh(silent: bool = False) -> bool:
         return False
 
 
-def ensure_cache(force: bool = False, stale: int = DEFAULT_STALE) -> bool:
+def ensure_cache(force: bool = False, stale: int | None = None) -> bool:
+    if stale is None:
+        stale = stale_local_seconds()
     db = get_db()
     needs_sync = force or not table_exists(db, "local_formula")
     if not needs_sync:

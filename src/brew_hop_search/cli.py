@@ -26,32 +26,22 @@ from brew_hop_search.display import (
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
 
-from brew_hop_search.defaults import STALE_API as DEFAULT_STALE
+from brew_hop_search.defaults import (
+    parse_duration as _parse_duration_seconds,
+    stale_api_seconds,
+)
 
 
 # ── duration parsing ─────────────────────────────────────────────────────────
 
 def parse_duration(s: str) -> int:
-    s = s.strip().lower()
-    total = 0
-    for amount, unit in re.findall(r"(\d+)\s*([smhd])", s):
-        n = int(amount)
-        if unit == "s":
-            total += n
-        elif unit == "m":
-            total += n * 60
-        elif unit == "h":
-            total += n * 3600
-        elif unit == "d":
-            total += n * 86400
-    if total == 0:
-        try:
-            total = int(s)
-        except ValueError:
-            raise argparse.ArgumentTypeError(
-                f"invalid duration: {s!r}  (examples: 30m, 6h, 1d, 1h30m)"
-            )
-    return total
+    """argparse type adapter around defaults.parse_duration."""
+    try:
+        return _parse_duration_seconds(s)
+    except (ValueError, TypeError):
+        raise argparse.ArgumentTypeError(
+            f"invalid duration: {s!r}  (examples: 30m, 6h, 1d, 1h30m)"
+        )
 
 
 # ── cache status ─────────────────────────────────────────────────────────────
@@ -290,8 +280,9 @@ def main(argv=None):
                        help="sync refresh (bare: force, =DUR: if older); "
                             "--fresh is an alias")
     cache.add_argument("--stale", nargs="?", type=parse_duration,
-                       const=DEFAULT_STALE, default=None, metavar="DUR",
-                       help="background refresh threshold (default: 6h)")
+                       const=stale_api_seconds(), default=None, metavar="DUR",
+                       help="background refresh threshold (default: 6h, "
+                            "$BREW_HOP_SEARCH_STALE_API to override)")
 
     # ── output ──
     fmt = ap.add_argument_group("output")
@@ -464,7 +455,7 @@ def main(argv=None):
     if limit == 0:
         limit = 999999  # 0 = all
 
-    stale = args.stale if args.stale is not None else DEFAULT_STALE
+    stale = args.stale if args.stale is not None else stale_api_seconds()
     # --refresh: None=no force, 0=force now, >0=sync if older than DUR
     force_refresh = args.refresh is not None and args.refresh == 0
     fresh = args.refresh if args.refresh and args.refresh > 0 else None

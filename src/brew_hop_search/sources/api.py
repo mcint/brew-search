@@ -96,8 +96,11 @@ def background_refresh(kind: str, url: str) -> None:
         pass
 
 
-def ensure_cache(kind: str, url: str, force: bool, stale: int,
+def ensure_cache(kind: str, url: str, force: bool, stale: int | None,
                  fresh: int | None) -> bool:
+    from brew_hop_search.defaults import stale_api_seconds
+    if stale is None:
+        stale = stale_api_seconds()
     db = get_db()
     needs_sync = force or not table_exists(db, kind)
 

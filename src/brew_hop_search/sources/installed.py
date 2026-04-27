@@ -11,7 +11,7 @@ import sys
 from brew_hop_search.cache import get_db, import_to_db, table_age, table_exists
 from brew_hop_search.display import dim, red, status_line
 
-from brew_hop_search.defaults import STALE_INSTALLED as DEFAULT_STALE
+from brew_hop_search.defaults import stale_installed_seconds
 
 
 def _brew_installed_json() -> dict:
@@ -86,7 +86,9 @@ def refresh(silent: bool = False) -> bool:
         return False
 
 
-def ensure_cache(force: bool = False, stale: int = DEFAULT_STALE) -> bool:
+def ensure_cache(force: bool = False, stale: int | None = None) -> bool:
+    if stale is None:
+        stale = stale_installed_seconds()
     db = get_db()
     needs_sync = force or not table_exists(db, "installed_formula")
     if not needs_sync:
