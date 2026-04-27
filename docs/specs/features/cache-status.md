@@ -20,17 +20,37 @@ No query, no paging, no source flags.
 
 ```
   db  brew-hop-search/brew-hop-search.db  61.5 MB
-  formula    8306  1h12m ago  fts  30MB json
-  cask    7596  1h12m ago  fts  14MB json
-  installed:f     460  1h11m ago
-  installed:c      84  1h11m ago
-  taps      49  41m ago
-  local:f     160  1d23h ago
-  local:c      59  1d23h ago
+  formula    8306  1h12m ago  ttl 6h        fts  30MB json
+  cask       7596  1h12m ago  ttl 6h        fts  14MB json
+  installed:f     460  1h11m ago  ttl 1h
+  installed:c      84  1h11m ago  ttl 1h
+  taps             49     41m ago  ttl 1h
+  local:f         160  1d23h ago  ttl 1h
+  local:c          59  1d23h ago  ttl 1h
 ```
 
 Compact: one line per source. DB path and size on first line.
-Per-source: label, entry count (right-aligned), age, FTS status, JSON file size.
+Per-source: label, entry count (right-aligned), age, **ttl** (threshold
+beyond which the source will be background-refreshed on next read), FTS
+status, JSON file size.
+
+### `-v`: ttl source layer
+
+Shows where each TTL came from (`default`, `env`):
+
+```
+  formula    8306  1h12m ago  ttl 6h (default)        fts  30MB json
+  installed:f  460  1h11m ago  ttl 2s (env: BREW_HOP_SEARCH_STALE_INSTALLED)
+```
+
+### `-vv`: next-refresh ETA
+
+Adds `fresh for <duration>` (or `stale` if already past):
+
+```
+  formula    8306  1h12m ago  ttl 6h (default)  fresh for 4h47m  fts  30MB json
+  installed:f  460  3h ago    ttl 1h (default)  stale
+```
 
 ### JSON
 

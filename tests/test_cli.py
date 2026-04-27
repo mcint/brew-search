@@ -114,6 +114,72 @@ def test_cache_status_json():
     assert "sources" in data
 
 
+def test_cache_status_json_includes_ttl(tmp_path):
+    """Each source in cache-status JSON carries its TTL + source-layer."""
+    import json as _json
+    import sqlite_utils, time, os as _os
+    db_path = tmp_path / "x.db"
+    db = sqlite_utils.Database(db_path)
+    db["formula"].insert_all([{"name": "foo", "desc": "", "homepage": "",
+                                "version": "1.0", "raw": "{}"}], pk="name")
+    db["formula"].enable_fts(["name", "desc"], tokenize="porter")
+    db["_meta"].insert({"kind": "formula", "updated_at": time.time(),
+                        "count": 1}, pk="kind", replace=True)
+    env = {**_os.environ,
+           "BREW_HOP_SEARCH_DB": str(db_path),
+           "BREW_HOP_SEARCH_STALE_API": "9s"}
+    r = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", "-C", "--json"],
+        capture_output=True, text=True, env=env, timeout=10,
+    )
+    data = _json.loads(r.stdout)
+    f = data["sources"]["formula"]
+    assert f["ttl_seconds"] == 9
+    assert f["ttl_source"] == "env"
+    assert f["ttl_env_var"] == "BREW_HOP_SEARCH_STALE_API"
+
+
+def test_cache_status_human_shows_ttl(tmp_path):
+    """Human cache-status output includes the 'ttl <duration>' column."""
+    import sqlite_utils, time, os as _os
+    db_path = tmp_path / "x.db"
+    db = sqlite_utils.Database(db_path)
+    db["formula"].insert_all([{"name": "foo", "desc": "", "homepage": "",
+                                "version": "1.0", "raw": "{}"}], pk="name")
+    db["formula"].enable_fts(["name", "desc"], tokenize="porter")
+    db["_meta"].insert({"kind": "formula", "updated_at": time.time(),
+                        "count": 1}, pk="kind", replace=True)
+    env = {**_os.environ, "BREW_HOP_SEARCH_DB": str(db_path)}
+    r = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", "-C"],
+        capture_output=True, text=True, env=env, timeout=10,
+    )
+    out = re.sub(r"\033\[[0-9;]*m", "", r.stdout)
+    assert "ttl 6h" in out  # default STALE_API
+
+
+def test_cache_status_v_shows_ttl_source(tmp_path):
+    """-C -v annotates the ttl with (default) or (env: BREW_HOP_SEARCH_*)."""
+    import sqlite_utils, time, os as _os
+    db_path = tmp_path / "x.db"
+    db = sqlite_utils.Database(db_path)
+    db["formula"].insert_all([{"name": "foo", "desc": "", "homepage": "",
+                                "version": "1.0", "raw": "{}"}], pk="name")
+    db["formula"].enable_fts(["name", "desc"], tokenize="porter")
+    db["_meta"].insert({"kind": "formula", "updated_at": time.time(),
+                        "count": 1}, pk="kind", replace=True)
+    env = {**_os.environ,
+           "BREW_HOP_SEARCH_DB": str(db_path),
+           "BREW_HOP_SEARCH_STALE_API": "30s"}
+    r = subprocess.run(
+        [sys.executable, "-m", "brew_hop_search.cli", "-C", "-v"],
+        capture_output=True, text=True, env=env, timeout=10,
+    )
+    out = re.sub(r"\033\[[0-9;]*m", "", r.stdout)
+    assert "ttl 30s" in out
+    assert "BREW_HOP_SEARCH_STALE_API" in out
+
+
 def test_fresh_alias_in_help():
     """--fresh should be exposed in --help as an alias of --refresh."""
     out = run("--help")

@@ -11,12 +11,19 @@ import time
 
 # ── duration formatting ──────────────────────────────────────────────────────
 
-def fmt_duration(seconds: float) -> str:
+def fmt_duration(seconds: float, sub_minute: bool = False) -> str:
+    """Format seconds as a compact duration.
+
+    By default, sub-minute values render as '<1m' since "freshness ages"
+    rarely care about seconds. Pass `sub_minute=True` for TTL displays
+    where the exact seconds matter (e.g. 12-factor short-timeout testing
+    with `BREW_HOP_SEARCH_STALE_API=2s`).
+    """
     if seconds == float("inf"):
         return "never"
     s = int(seconds)
     if s < 60:
-        return "<1m"
+        return f"{s}s" if sub_minute else "<1m"
     if s < 3600:
         return f"{s // 60}m"
     h, rem = divmod(s, 3600)

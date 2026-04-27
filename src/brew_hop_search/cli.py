@@ -115,7 +115,33 @@ def parse_refresh(s: str):
 
 # ── cache status ─────────────────────────────────────────────────────────────
 
-def show_cache_status() -> None:
+def _ttl_for(kind: str) -> tuple[int, str, str]:
+    """Resolve (ttl_seconds, source_layer, env_var_name) for a cache kind.
+
+    source_layer ∈ {"default", "env"}; env_var_name is the BREW_HOP_SEARCH_*
+    name that *would* override (always populated, even when source_layer is
+    "default", so -v can advertise the override knob).
+    """
+    from brew_hop_search.defaults import (
+        stale_api_seconds, stale_installed_seconds,
+        stale_taps_seconds, stale_local_seconds,
+    )
+    table = {
+        "formula": ("STALE_API", stale_api_seconds),
+        "cask": ("STALE_API", stale_api_seconds),
+        "installed_formula": ("STALE_INSTALLED", stale_installed_seconds),
+        "installed_cask": ("STALE_INSTALLED", stale_installed_seconds),
+        "tap": ("STALE_TAPS", stale_taps_seconds),
+        "local_formula": ("STALE_LOCAL", stale_local_seconds),
+        "local_cask": ("STALE_LOCAL", stale_local_seconds),
+    }
+    env_name, fn = table.get(kind, ("", lambda: 0))
+    val = fn()
+    src = "env" if env_name and os.environ.get(f"BREW_HOP_SEARCH_{env_name}") else "default"
+    return val, src, env_name
+
+
+def show_cache_status(verbose: int = 1) -> None:
     db_exists = DB_PATH.exists()
     size_str = ""
     if db_exists:
@@ -129,8 +155,6 @@ def show_cache_status() -> None:
 
     db = get_db()
 
-    # Source table: one line each
-    # format: "  label  count  age  [fts]"
     sources = [
         ("formula", green, True),
         ("cask", yellow, True),
@@ -158,12 +182,27 @@ def show_cache_status() -> None:
         age = table_age(db, kind)
         label = color_fn(_LABELS[kind])
         age_str = fmt_duration(age)
-        parts = [f"  {label}", f"{count:>6}", f"{dim(age_str + ' ago')}"]
+        ttl_s, src_layer, env_name = _ttl_for(kind)
+        ttl_str = f"ttl {fmt_duration(ttl_s, sub_minute=True)}"
+        if verbose >= 2:
+            if src_layer == "env":
+                ttl_str += f" {dim(f'(env: BREW_HOP_SEARCH_{env_name})')}"
+            else:
+                ttl_str += f" {dim('(default)')}"
+        parts = [
+            f"  {label}",
+            f"{count:>6}",
+            f"{dim(age_str + ' ago')}",
+            dim(ttl_str),
+        ]
+        if verbose >= 3 and ttl_s > 0:
+            remaining = max(0, ttl_s - int(age))
+            parts.append(dim(f"fresh for {fmt_duration(remaining, sub_minute=True)}")
+                         if remaining else dim("stale"))
         if check_fts:
             fts_name = f"{kind}_fts"
             has_fts = fts_name in db.table_names()
             parts.append(green("fts") if has_fts else red("no fts"))
-            # JSON file info
             jp = json_path(kind)
             if jp.exists():
                 jp_mb = jp.stat().st_size / (1024 * 1024)
@@ -194,11 +233,15 @@ def show_cache_status_json() -> None:
         ]
         for kind in all_kinds:
             if table_exists(db, kind):
+                ttl_s, src_layer, env_name = _ttl_for(kind)
                 info["sources"][kind] = {
                     "count": table_count(db, kind),
                     "age_seconds": round(table_age(db, kind), 1),
                     "updated_at": table_updated_at(db, kind),
                     "fts": f"{kind}_fts" in db.table_names(),
+                    "ttl_seconds": ttl_s,
+                    "ttl_source": src_layer,
+                    "ttl_env_var": f"BREW_HOP_SEARCH_{env_name}" if env_name else None,
                 }
                 source_count += 1
     env = _envelope("cache-status", info, count=source_count)
@@ -457,10 +500,11 @@ def main(argv=None):
 
     # ── cache status ──
     if args.cache:
+        c_verbose = 0 if args.quiet else 1 + args.verbose
         if args.json:
             show_cache_status_json()
         else:
-            show_cache_status()
+            show_cache_status(verbose=c_verbose)
         return
 
     # ── outdated mode ──
