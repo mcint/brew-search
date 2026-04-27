@@ -44,6 +44,53 @@ def parse_duration(s: str) -> int:
         )
 
 
+# ── --refresh / --fresh value parsing ────────────────────────────────────────
+
+REFRESH_KINDS = frozenset({"index", "installed", "outdated",
+                           "taps", "local", "all"})
+
+
+def parse_refresh(s: str):
+    """Accept a duration ('6h') or a comma-separated KIND list ('index,installed').
+
+    Returns:
+      - int seconds (≥0)        for duration form
+      - frozenset[str] of kinds for selector form (always force-refresh)
+
+    Raises ArgumentTypeError on unknown kinds or unparseable input.
+    Mixing (e.g. 'installed,6h') is rejected — '6h' isn't a kind.
+    """
+    s = (s or "").strip()
+    if not s:
+        raise argparse.ArgumentTypeError("--refresh: empty value")
+    looks_like_kinds = ("," in s) or (s.lower() in REFRESH_KINDS)
+    if looks_like_kinds:
+        kinds = [tok.strip().lower() for tok in s.split(",") if tok.strip()]
+        bad = [k for k in kinds if k not in REFRESH_KINDS]
+        if bad:
+            raise argparse.ArgumentTypeError(
+                f"--refresh: unknown kind(s): {', '.join(bad)}  "
+                f"(known: {', '.join(sorted(REFRESH_KINDS))})"
+            )
+        if "all" in kinds:
+            kinds = ["index", "installed", "taps", "local"]
+        # 'outdated' = derived from index+installed; expand for downstream.
+        if "outdated" in kinds:
+            kinds = [k for k in kinds if k != "outdated"]
+            for k in ("index", "installed"):
+                if k not in kinds:
+                    kinds.append(k)
+        return frozenset(kinds)
+    # Duration form
+    try:
+        return _parse_duration_seconds(s)
+    except (ValueError, TypeError):
+        raise argparse.ArgumentTypeError(
+            f"--refresh: not a duration or kind list: {s!r}  "
+            f"(durations: 30m, 6h, 1d; kinds: {', '.join(sorted(REFRESH_KINDS))})"
+        )
+
+
 # ── cache status ─────────────────────────────────────────────────────────────
 
 def show_cache_status() -> None:
@@ -275,10 +322,11 @@ def main(argv=None):
 
     # ── cache ──
     cache = ap.add_argument_group("cache")
-    cache.add_argument("--refresh", "--fresh", nargs="?", type=parse_duration,
-                       const=0, default=None, metavar="DUR",
-                       help="sync refresh (bare: force, =DUR: if older); "
-                            "--fresh is an alias")
+    cache.add_argument("--refresh", "--fresh", nargs="?", type=parse_refresh,
+                       const=0, default=None, metavar="DUR|KIND[,KIND...]",
+                       help="sync refresh: bare=force, =DUR=if older, "
+                            "=KIND[,KIND...] (kinds: index,installed,outdated,"
+                            "taps,local,all). --fresh is an alias")
     cache.add_argument("--stale", nargs="?", type=parse_duration,
                        const=stale_api_seconds(), default=None, metavar="DUR",
                        help="background refresh threshold (default: 6h, "
@@ -456,9 +504,27 @@ def main(argv=None):
         limit = 999999  # 0 = all
 
     stale = args.stale if args.stale is not None else stale_api_seconds()
-    # --refresh: None=no force, 0=force now, >0=sync if older than DUR
-    force_refresh = args.refresh is not None and args.refresh == 0
-    fresh = args.refresh if args.refresh and args.refresh > 0 else None
+    # --refresh resolves to one of:
+    #   None        — no flag passed, use default cache-stale rules
+    #   0           — bare --refresh, force-refresh every source this command touches
+    #   int > 0     — --refresh=DUR, sync refresh if cache older than DUR
+    #   frozenset   — --refresh=KIND[,...], force-refresh only those kinds
+    refresh_kinds: frozenset[str] | None = None
+    force_refresh = False
+    fresh: int | None = None
+    if isinstance(args.refresh, frozenset):
+        refresh_kinds = args.refresh
+    elif args.refresh == 0:
+        force_refresh = True
+    elif isinstance(args.refresh, int) and args.refresh > 0:
+        fresh = args.refresh
+
+    def _force(kind: str) -> bool:
+        """Should this source be force-refreshed for this invocation?"""
+        if refresh_kinds is not None:
+            return kind in refresh_kinds
+        return force_refresh
+
     quiet = args.quiet
     # Verbosity levels: 0=quiet, 1=default, 2=-v, 3=-vv
     if quiet:
@@ -482,21 +548,21 @@ def main(argv=None):
     search_sources = []  # (kind, label, pk_col)
 
     if args.installed:
-        installed.ensure_cache(force=force_refresh)
+        installed.ensure_cache(force=_force("installed"))
         if want_formula:
             search_sources.append(("installed_formula", "installed formulae", "name"))
         if want_cask:
             search_sources.append(("installed_cask", "installed casks", "token"))
 
     if args.local:
-        local.ensure_cache(force=force_refresh)
+        local.ensure_cache(force=_force("local"))
         if want_formula:
             search_sources.append(("local_formula", "local formulae", "name"))
         if want_cask:
             search_sources.append(("local_cask", "local casks", "token"))
 
     if args.taps:
-        taps.ensure_cache(force=force_refresh)
+        taps.ensure_cache(force=_force("taps"))
         search_sources.append(("tap", "taps", "slug"))
 
     # Default: remote API (only if no source flags set)
@@ -508,7 +574,7 @@ def main(argv=None):
             api_kinds.append(("cask", api.CASK_URL))
 
         for kind, url in api_kinds:
-            if not api.ensure_cache(kind, url, force_refresh, stale, fresh):
+            if not api.ensure_cache(kind, url, _force("index"), stale, fresh):
                 print(red(f"No cache for {kind} and fetch failed."), file=sys.stderr)
                 sys.exit(1)
             pk = "name" if kind == "formula" else "token"
