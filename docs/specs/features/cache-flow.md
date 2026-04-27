@@ -1,0 +1,225 @@
+# cache-flow
+
+Offline-first read path: respond from cache immediately, refresh in
+background, hold the terminal until the bg refresh finishes (or `^C`).
+
+## Purpose
+
+Make `bhs <query>`, `bhs -i`, and `bhs -O` feel instant on repeated use,
+even hours or days later. The cache is the primary source of truth at
+read time; the network is a *post-print* concern.
+
+The shape: `(invoke) → (issue local + remote in parallel) → (print local
+results, flush) → (notify if stale, hold open terminal) → (print update
+duration, notify if remote differs) → (exit)`.
+
+## Input
+
+This isn't a flag — it's the default behavior for **search**, **`-i`**,
+**`-O`**. Existing flags continue to apply:
+
+- `--refresh[=DUR]` / `--fresh[=DUR]` (alias) — force or conditional
+  *foreground* refresh (legacy behavior; pre-empts cache-first)
+- `--refresh=KIND[,KIND...]` — refresh a subset only; KIND ∈
+  `{index, installed, outdated, taps, local, all}` (see `--refresh` below)
+- `--stale DUR` — override the threshold beyond which a cache is
+  considered stale enough to background-refresh
+- `-L` / `--local` — *no* network, no background refresh; pure cache
+- `-q` / `--quiet` — disables the trailing status line (results only)
+
+### `--refresh` selector
+
+Bare `--refresh` and `--refresh=DUR` keep their existing meaning. The
+new comma-separated form picks which sources to act on:
+
+```
+--refresh                # force-refresh whichever sources this command touches
+--refresh=index          # API formulae+casks only
+--refresh=installed      # rerun `brew info --json=v2 --installed`
+--refresh=index,installed
+--refresh=all            # everything: index, installed, taps, local
+--refresh=6h             # legacy: refresh if older than 6h (any KIND that's stale)
+```
+
+Parser rule: if the value matches `^[0-9]+[smhd]?(.*)?$` it's a duration;
+otherwise it's a comma-separated KIND list. Mixing
+(`--refresh=installed,6h`) is rejected with a clear error.
+
+## Output
+
+### The trailing status line
+
+After the result body is printed and stdout is flushed, the next
+behavior depends on whether a background refresh is in flight.
+
+**No bg refresh** (cache fresh enough, `-L`, or refresh skipped): no
+trailing line. Exit immediately.
+
+**Bg refresh in flight**, TTY:
+
+```
+  python  3.13.2  Interpreted, interactive, object-oriented programming language  │ ...
+  …  [more results]
+  # [cache] updating index … (^C to skip)
+```
+
+The `# [cache] updating <kinds> …` line is written to stderr in dim
+color. When the bg refresh completes, the line is overwritten in place
+with one of:
+
+- `# [cache] index ✓ matches cache  (1.2s)` — refresh ran, results
+  unchanged
+- `# [cache] index ↻ updated, results may differ — re-run  (1.2s)` —
+  refresh ran, top-N results differ from what was just printed
+- `# [cache] index ✗ refresh failed (network: …)  (8.3s)` — refresh
+  errored; cached results were still served
+
+`<kinds>` is comma-joined (`index`, `installed`, `outdated`); typically
+just one for search and `-i`, two for `-O` if both `index` and
+`installed` are stale.
+
+**Bg refresh in flight**, non-TTY: no status line at all. The bg
+process is still launched and detached, but the terminal returns
+immediately so `bhs … | grep …` doesn't block.
+
+### Differs/matches detection
+
+The "matches cache" / "may differ" determination compares the **set of
+top-N (name, version) tuples** that were just printed against the same
+query re-evaluated against the freshly-refreshed cache. If the tuple
+list is identical (order included), report `matches`. Otherwise report
+`may differ` — without re-printing, since the user can just re-run.
+
+For `-i`, the comparison is `set(installed names + versions)` — we don't
+care about ordering for the installed list.
+
+For `-O`, the comparison is `set((name, current_version))` of the
+outdated list.
+
+### Timing
+
+Wall-clock duration of the bg refresh is recorded and printed in the
+trailing line. Additionally:
+
+- At `-v`: also log to stderr `# [cache] timing  index=1.2s`
+- At `-vv`: log per-step `# [cache] timing  fetch=0.9s parse=0.2s
+  index=0.1s`
+- Always: append a row to `~/.cache/brew-hop-search/refresh.log` with
+  `<iso-timestamp>\t<kind>\t<duration_ms>\t<ok|fail>` for later
+  analysis. Caps at 1MB (truncate-oldest on rotation).
+
+### `^C` during the trailing line
+
+When the user `^C`s while the trailing line is held open, the bg
+process is **not** killed (it owns its own session via
+`start_new_session=True` already). The CLI exits cleanly with exit
+code 0. The next invocation will pick up the refreshed cache when the
+bg job finishes on its own.
+
+## Cache decision matrix
+
+| State                        | -L  | search default                        | --refresh             | --refresh=KIND        |
+|------------------------------|-----|---------------------------------------|-----------------------|-----------------------|
+| Fresh cache                  | use | use, no bg                            | sync refresh, then print | sync refresh selected; print |
+| Stale cache (age > stale)    | use | print cache, bg refresh, trailing line | sync refresh, then print | sync refresh selected; print |
+| No cache                     | err | sync refresh, then print              | sync refresh, then print | sync refresh selected, then print |
+
+*"Sync refresh, then print"* keeps the existing first-run UX — there's
+nothing to print until the cache exists.
+
+## `-i` specifics
+
+- `-i` always serves from cache when the cache exists, regardless of
+  age, by default.
+- The `brew info --json=v2 --installed` foreground call is bumped from
+  60s to **300s** when run as a background refresh — slow brew
+  invocations no longer block the user.
+- `--refresh=installed` (or bare `--refresh` while `-i` is active) reverts
+  to the synchronous behavior.
+- Cache-stale threshold for `-i` is `STALE_INSTALLED` (default 1h).
+
+## `-O` specifics
+
+- `-O` reads the existing `formula`, `cask`, `installed_*` caches
+  without forcing refresh. If both index and installed are within their
+  stale windows, `-O` is fully offline.
+- If either is stale, the relevant kinds are bg-refreshed after the
+  outdated list prints. Trailing status reports `<kinds>` accordingly.
+- `--brew-verify` keeps its current synchronous behavior — by user
+  intent it's the slow, authoritative path.
+
+## `-C` specifics
+
+The cache-status display gains a "ttl" column showing the threshold at
+which each source will be considered stale on the next read:
+
+```
+  formula  8306  1h12m ago  ttl 6h        fts  30MB json
+  cask     7596  1h12m ago  ttl 6h        fts  14MB json
+  installed:f  460  1h11m ago  ttl 1h
+```
+
+At `-v`, append the resolution layer (`default` / `env` / `config`):
+
+```
+  formula  8306  1h12m ago  ttl 6h (default)        fts  30MB json
+  installed:f  460  1h11m ago  ttl 2s (env: BREW_HOP_SEARCH_STALE_INSTALLED)
+```
+
+At `-vv`, add the next-refresh ETA:
+
+```
+  formula  8306  1h12m ago  ttl 6h (default)  fresh for 4h47m  fts  30MB json
+```
+
+## Examples
+
+```sh
+# Default behavior — answer from cache, refresh in background.
+brew-hop-search python                      # search
+brew-hop-search -i                          # installed
+brew-hop-search -O                          # outdated
+
+# Pure offline (no network, no bg refresh).
+brew-hop-search -L python
+brew-hop-search -i -L
+
+# Force refresh, then print fresh results.
+brew-hop-search --refresh python            # all sources this command touches
+brew-hop-search --refresh=installed -i      # just `brew info` rerun
+brew-hop-search --refresh=index,installed -O
+
+# Test 1-second TTLs (12-factor):
+BREW_HOP_SEARCH_STALE_API=1s brew-hop-search python
+
+# Quiet pipeline use — no trailing status line, no bg blocking.
+brew-hop-search -q python | fzf
+```
+
+## Implementation Notes
+
+- The bg refresh is already non-blocking in `api.background_refresh`
+  (`subprocess.Popen` with `start_new_session=True`). The new piece is
+  the **trailing status thread** that polls a sentinel file written by
+  the bg process on completion.
+- Sentinel mechanism: bg process writes
+  `~/.cache/brew-hop-search/.refresh-<kind>.done` (with duration + ok
+  flag) at end of run. Foreground process polls for this file until
+  it appears or `^C`. Default poll interval 100ms; cap wait at the
+  bg process's expected timeout (e.g. 300s for installed).
+- The "results may differ" comparison runs the same `search()` call a
+  second time after refresh and diffs the (name, version) tuples. Cost
+  is one extra FTS query; negligible.
+- Quiet mode (`-q`) and non-TTY runs short-circuit the trailing line
+  entirely but still launch the bg refresh.
+
+## Spec status
+
+**Specced:** offline-first read path, trailing status line semantics,
+`--refresh=KIND` selector, `-C` ttl column, env-var TTL overrides
+(landed separately in `defaults.py`).
+
+**Not yet repaved:** the bg-refresh sentinel file mechanism described
+above is the working plan; if implementation finds a cleaner approach
+(e.g. a shared SQLite "refresh_progress" table), this spec is updated
+to match before the implementation lands.
