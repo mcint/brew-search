@@ -310,6 +310,47 @@ def output_grep(all_results: list[tuple]) -> None:
             print(f"  {desc}")
 
 
+# ── multi-line (long) output ─────────────────────────────────────────────────
+
+def output_multi(all_results: list[tuple]) -> None:
+    """Multi-line per-result, labeled fields. Reads naturally; greppable.
+
+        formula  python@3.13
+          version  3.13.2
+          desc     Interpreted, interactive, object-oriented programming language
+          url      https://www.python.org/
+
+    Labels are aligned to the widest label across rows. A blank line
+    separates entries. Pipes through `grep -A` cleanly.
+    """
+    rows = _all_rows(all_results)
+    if not rows:
+        return
+    # Per-row: kind label, then fields. Label width is uniform.
+    field_order = ("version", "desc", "url")
+    label_w = max(len(f) for f in field_order)
+    first = True
+    for kind, results, *_ in all_results:
+        for item in results:
+            row = _extract_row(kind, item)
+            if not first:
+                print()
+            first = False
+            head_label = (
+                "cask" if "cask" in kind else
+                "tap" if kind == "tap" else
+                "formula"
+            )
+            print(f"{bold(head_label)}  {bold(row['name'])}")
+            for field, val in (
+                ("version", row["version"]),
+                ("desc", row["description"]),
+                ("url", row["homepage"]),
+            ):
+                if val:
+                    print(f"  {dim(field.ljust(label_w))}  {val}")
+
+
 def _envelope(command: str, results, **meta_fields) -> dict:
     """Wrap results in a self-describing meta envelope.
 

@@ -21,7 +21,7 @@ from brew_hop_search.display import (
     bold, dim, green, yellow, cyan, magenta, red,
     display_section, display_tap_section, display_installed_section,
     output_grep, output_json, output_csv, output_tsv, output_table,
-    output_sql_insert, fmt_duration, status_line,
+    output_sql_insert, output_multi, fmt_duration, status_line,
 )
 from brew_hop_search.search import search
 from brew_hop_search.sources import api, installed, taps, local
@@ -414,6 +414,8 @@ def main(argv=None):
                      help="aligned columns (like sqlite3 -column)")
     fmt.add_argument("--sql", action="store_true",
                      help="SQLite INSERT statements")
+    fmt.add_argument("--multi", "--long", action="store_true",
+                     help="multi-line per-result with labeled fields")
     from brew_hop_search.defaults import LIMIT as DEFAULT_LIMIT
     fmt.add_argument("-n", "--limit", type=str,
                      default=os.environ.get("BREW_HOP_SEARCH_LIMIT", DEFAULT_LIMIT),
@@ -698,6 +700,9 @@ def main(argv=None):
         return
     if args.sql:
         output_sql_insert(all_results)
+        return
+    if args.multi:
+        output_multi(all_results)
         return
 
     if args.grep:

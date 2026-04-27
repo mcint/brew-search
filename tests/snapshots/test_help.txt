@@ -43,6 +43,7 @@ output:
   --tsv                 tab-separated with header
   -T, --table           aligned columns (like sqlite3 -column)
   --sql                 SQLite INSERT statements
+  --multi, --long       multi-line per-result with labeled fields
   -n N[+OFF], --limit N[+OFF]
                         max results [+offset], 0=all (default: 20, or
                         $BREW_HOP_SEARCH_LIMIT)

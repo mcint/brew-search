@@ -14,7 +14,7 @@ you type `brew-hop-search python`.
 - **sources**: `-f`, `-c`, `-i`, `-t`, `-L` (composable)
 - **paging**: `-n N[+OFF]` (default: 20)
 - **cache control**: `--refresh[=DUR]` (alias: `--fresh`), `--stale DUR`
-- **format**: `-q`, `-g`, `--json`, `--csv`, `--tsv`, `--table`, `--sql`, `-v`, `-vv`
+- **format**: `-q`, `-g`, `--json`, `--csv`, `--tsv`, `--table`, `--sql`, `--multi` (alias `--long`), `-v`, `-vv`
 
 ## Query Syntax
 
@@ -140,6 +140,22 @@ INSERT INTO results VALUES ('f', 'python@3.13', '3.13.2', '...', '...');
 ```
 
 SQLite INSERT statements. Pipe to `sqlite3` to build a queryable local table.
+
+### Multi-line (`--multi` / `--long`)
+
+```
+formula  python@3.13
+  version  3.13.2
+  desc     Interpreted, interactive, object-oriented programming language
+  url      https://www.python.org/
+
+formula  node
+  version  21.6.1
+  ...
+```
+
+One stanza per result, labeled fields, blank line between. Reads
+naturally for one-or-two-result lookups; pipes through `grep -A` cleanly.
 
 ## Data Sources
 

@@ -229,6 +229,23 @@ def test_expect_no_results(testdb):
            "  no results for 'zzzznonexistent'\n")
 
 
+def test_expect_multi_output(testdb):
+    r"""--multi: one result per stanza, labeled fields, blank line between."""
+    expect(_run_with_db(testdb, "--multi", "python"),
+           "formula  python@3.13\n"
+           "  version  3.13.2\n"
+           "  desc     Interpreted, interactive, object-oriented programming language\n"
+           "  url      https://www.python.org/\n")
+
+
+def test_multi_long_alias(testdb):
+    """--long is a synonym for --multi."""
+    a = _run_with_db(testdb, "--multi", "node")
+    b = _run_with_db(testdb, "--long", "node")
+    assert a == b
+    assert "version" in a and "desc" in a and "url" in a
+
+
 def test_expect_cask_search(testdb):
     r"""Cask-only search — install --cask hint, no source tag at default."""
     expect(_run_with_db(testdb, "-c", "firefox"),
