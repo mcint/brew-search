@@ -113,6 +113,46 @@ def parse_refresh(s: str):
         )
 
 
+# ── standalone --refresh=KIND command ────────────────────────────────────────
+
+def _run_refresh_only(kinds: frozenset, verbose: int = 1) -> None:
+    """Force-refresh the listed kinds, print one summary line per kind, exit.
+
+    Used when `--refresh=KIND[,...]` is given with no query and no source
+    flag — the invocation's whole purpose is to warm caches. Sequential
+    and blocking; per-kind wall-clock at default verbosity, with a total
+    line at -v.
+    """
+    monotonic_start = time.monotonic()
+    # Order: cheapest/most-local first so the user sees something
+    # immediately even if a later network step blocks.
+    order = ["local", "taps", "installed", "index"]
+    selected = [k for k in order if k in kinds]
+
+    for kind in selected:
+        t0 = time.monotonic()
+        if kind == "index":
+            ok_f = api.ensure_cache("formula", api.FORMULA_URL, force=True)
+            ok_c = api.ensure_cache("cask", api.CASK_URL, force=True)
+            ok = ok_f and ok_c
+        elif kind == "installed":
+            ok = installed.ensure_cache(force=True)
+        elif kind == "taps":
+            ok = taps.ensure_cache(force=True)
+        elif kind == "local":
+            ok = local.ensure_cache(force=True)
+        else:
+            continue
+        dt = time.monotonic() - t0
+        if verbose >= 1:
+            mark = green("✓") if ok else red("✗")
+            print(f"  # [cache] {kind:<10} {mark} {dt:.2f}s", file=sys.stderr)
+
+    if verbose >= 2:
+        total = time.monotonic() - monotonic_start
+        print(f"  # [cache] {'total':<10}   {total:.2f}s", file=sys.stderr)
+
+
 # ── cache status ─────────────────────────────────────────────────────────────
 
 def _ttl_for(kind: str) -> tuple[int, str, str]:
@@ -612,6 +652,12 @@ def main(argv=None):
 
     # No query and no source flags → short usage hints
     has_source_flag = args.installed or args.local or args.taps
+    # --refresh=KIND with no query is a standalone "load these caches"
+    # command. Bare --refresh and --refresh=DUR are modifiers and stay
+    # on their existing usage-hint behavior.
+    if not query and not has_source_flag and isinstance(args.refresh, frozenset):
+        _run_refresh_only(args.refresh, verbose=1 + args.verbose - int(args.quiet))
+        return
     if not query and not has_source_flag:
         from brew_hop_search import version_info
         print(dim(f"  brew-hop-search {version_info()}"))

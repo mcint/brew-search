@@ -104,6 +104,69 @@ def test_refresh_does_not_force_unrequested_sources(monkeypatch, tmp_path):
 
 # ── source flag already set: don't double-call ─────────────────────────────
 
+# ── standalone --refresh=KIND (no query, no source flag) ───────────────────
+
+def test_refresh_taps_only_no_query(monkeypatch, tmp_path, capsys):
+    """`bhs --refresh=taps` (no query) refreshes taps and exits — does
+    not print the usage banner."""
+    monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(tmp_path / "db.sqlite"))
+    calls = _patch_sources(monkeypatch)
+
+    from brew_hop_search.cli import main
+    main(["--refresh=taps"])
+
+    assert calls["taps"] == [True]
+    out = capsys.readouterr()
+    # Stdout must NOT carry the "try:" usage banner.
+    assert "try:" not in out.out
+    assert "brew-hop-search python" not in out.out
+    # Stderr should carry the per-kind status line.
+    assert "[cache] taps" in out.err
+
+
+def test_refresh_all_runs_every_kind(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(tmp_path / "db.sqlite"))
+    calls = _patch_sources(monkeypatch)
+
+    from brew_hop_search.cli import main
+    main(["--refresh=all"])
+
+    assert calls["api_formula"] == [True]
+    assert calls["api_cask"] == [True]
+    assert calls["installed"] == [True]
+    assert calls["taps"] == [True]
+    assert calls["local"] == [True]
+
+
+def test_refresh_only_does_not_run_unselected_kinds(monkeypatch, tmp_path):
+    monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(tmp_path / "db.sqlite"))
+    calls = _patch_sources(monkeypatch)
+
+    from brew_hop_search.cli import main
+    main(["--refresh=taps"])
+
+    assert calls["installed"] == []
+    assert calls["local"] == []
+    assert calls["api_formula"] == []
+    assert calls["api_cask"] == []
+
+
+def test_refresh_only_verbose_reports_total(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("BREW_HOP_SEARCH_DB", str(tmp_path / "db.sqlite"))
+    _patch_sources(monkeypatch)
+
+    from brew_hop_search.cli import main
+    main(["--refresh=all", "-v"])
+
+    err = capsys.readouterr().err
+    # One line per kind plus a "total" footer.
+    assert "[cache] local" in err
+    assert "[cache] taps" in err
+    assert "[cache] installed" in err
+    assert "[cache] index" in err
+    assert "[cache] total" in err
+
+
 def test_refresh_taps_with_T_flag_no_double_call(monkeypatch, tmp_path):
     """`bhs -T --refresh=taps foo` shouldn't call ensure_cache twice for
     taps — the existing `-T` branch already covers it via _force()."""

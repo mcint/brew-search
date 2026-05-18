@@ -45,6 +45,42 @@ Parser rule: if the value matches `^[0-9]+[smhd]?(.*)?$` it's a duration;
 otherwise it's a comma-separated KIND list. Mixing
 (`--refresh=installed,6h`) is rejected with a clear error.
 
+### `--refresh=KIND` as a standalone command
+
+`bhs --refresh=KIND[,...]` with no query and no source flag is a
+*"load these caches"* invocation: each requested kind is refreshed
+sequentially, a one-line status (`# [cache] taps  ✓ 0.3s`) is printed
+to stderr per kind, and the process exits. `-v` adds a `# [cache]
+total Xs` footer.
+
+```
+bhs --refresh=all          # warm everything in one go
+bhs --refresh=taps         # rescan local taps only
+bhs --refresh=index,local  # API + offline cache
+```
+
+This is distinct from `bhs --refresh foo` (force-refresh whatever
+sources `foo`'s search touches, then print results). Without a query
+or source flag, `--refresh=DUR` and bare `--refresh` still fall
+through to the usage hint — those forms are modifiers, not commands.
+
+When combined with a query or source flag, `--refresh=KIND` is also
+honored for kinds that the invocation wouldn't otherwise touch:
+`bhs --refresh=taps foo` runs the API search for `foo` *and* refreshes
+the taps cache as a side effect. (Previously, the explicit kind was
+silently ignored unless the matching source flag was also set.)
+
+**Future direction (not yet implemented):** per-kind durations in one
+invocation (`--refresh=local:5m,taps:5s`) are intentionally still
+rejected by the parser. Different TTLs require separate invocations
+today; the syntax is a deliberate spec change that will need its own
+precedence rules vs `--stale`, env vars, and config defaults.
+
+**Future direction:** parallel refresh with return-fast semantics
+(`bhs --refresh=all &` style without the `&`) — kick off every
+refresh, return control immediately, print completion lines async.
+Today the standalone command is sequential and blocking.
+
 ## Output
 
 ### The trailing status line
