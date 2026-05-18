@@ -662,6 +662,19 @@ def main(argv=None):
 
     search_sources = []  # (kind, label, pk_col)
 
+    # Honor --refresh=KIND even when the corresponding source flag isn't set.
+    # Without this, `bhs --refresh=taps foo` parses correctly but never
+    # actually refreshes the tap cache (taps.ensure_cache only ran inside
+    # `if args.taps:`). Search results still come from whichever sources the
+    # source flags select; --refresh just guarantees that cache is current.
+    if isinstance(args.refresh, frozenset):
+        if "taps" in args.refresh and not args.taps:
+            taps.ensure_cache(force=True)
+        if "local" in args.refresh and not args.local:
+            local.ensure_cache(force=True)
+        if "installed" in args.refresh and not args.installed:
+            installed.ensure_cache(force=True)
+
     if args.installed:
         installed.ensure_cache(force=_force("installed"))
         if want_formula:
