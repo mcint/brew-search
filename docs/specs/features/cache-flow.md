@@ -45,6 +45,22 @@ Parser rule: if the value matches `^[0-9]+[smhd]?(.*)?$` it's a duration;
 otherwise it's a comma-separated KIND list. Mixing
 (`--refresh=installed,6h`) is rejected with a clear error.
 
+#### Short forms
+
+For interactive use, single-letter shortcuts are accepted:
+
+| short | canonical    |
+|-------|--------------|
+| `x`   | `index`      |
+| `i`   | `installed`  |
+| `t`   | `taps`       |
+| `tap` | `taps`       |
+| `l`   | `local`      |
+
+`all` is spelled out (an `a` shortcut would collide with a future
+`api` kind). Long and short forms freely mix: `--refresh=i,taps,l`
+parses to `{installed, taps, local}`.
+
 ### `--refresh=KIND` as a standalone command
 
 `bhs --refresh=KIND[,...]` with no query and no source flag is a

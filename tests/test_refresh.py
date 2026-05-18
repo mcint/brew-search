@@ -55,6 +55,24 @@ def test_kind_outdated_expands_to_index_and_installed():
     assert parse_refresh("outdated,taps") == frozenset({"index", "installed", "taps"})
 
 
+def test_short_kinds_expand():
+    """Single-letter shortcuts: x=index, i=installed, t=taps, l=local.
+    Also tolerate `tap` (singular) since it's an easy slip."""
+    assert parse_refresh("x") == frozenset({"index"})
+    assert parse_refresh("i") == frozenset({"installed"})
+    assert parse_refresh("t") == frozenset({"taps"})
+    assert parse_refresh("l") == frozenset({"local"})
+    assert parse_refresh("tap") == frozenset({"taps"})
+
+
+def test_short_kinds_mix_with_canonical():
+    """`i,t` and `installed,taps` produce the same set."""
+    assert parse_refresh("i,t") == frozenset({"installed", "taps"})
+    assert parse_refresh("x,l") == frozenset({"index", "local"})
+    # Mixed long+short:
+    assert parse_refresh("installed,t") == frozenset({"installed", "taps"})
+
+
 def test_case_insensitive():
     assert parse_refresh("Index") == frozenset({"index"})
     assert parse_refresh("INDEX,Installed") == frozenset({"index", "installed"})

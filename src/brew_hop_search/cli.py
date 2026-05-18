@@ -49,6 +49,17 @@ def parse_duration(s: str) -> int:
 REFRESH_KINDS = frozenset({"index", "installed", "outdated",
                            "taps", "local", "all"})
 
+# Single-letter (and one tolerant alias) shorthand for refresh kinds.
+# `x` covers index since `i` belongs to installed. `all` is spelled out
+# to avoid future ambiguity with a hypothetical `api` kind.
+_REFRESH_SHORT = {
+    "x": "index",
+    "i": "installed",
+    "t": "taps",
+    "tap": "taps",
+    "l": "local",
+}
+
 
 def force_refresh_for(args, kind: str) -> bool:
     """Should source `kind` be force-refreshed for this invocation?
@@ -85,9 +96,12 @@ def parse_refresh(s: str):
     s = (s or "").strip()
     if not s:
         raise argparse.ArgumentTypeError("--refresh: empty value")
-    looks_like_kinds = ("," in s) or (s.lower() in REFRESH_KINDS)
+    looks_like_kinds = ("," in s) or (s.lower() in REFRESH_KINDS) \
+        or (s.lower() in _REFRESH_SHORT)
     if looks_like_kinds:
         kinds = [tok.strip().lower() for tok in s.split(",") if tok.strip()]
+        # Expand shorthand (x, i, t, l, tap) before validation.
+        kinds = [_REFRESH_SHORT.get(k, k) for k in kinds]
         bad = [k for k in kinds if k not in REFRESH_KINDS]
         if bad:
             raise argparse.ArgumentTypeError(
