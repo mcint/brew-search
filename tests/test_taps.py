@@ -90,6 +90,29 @@ def test_scan_taps_skips_test_and_spec_dirs(tmp_path, monkeypatch):
     assert names == {"thing"}
 
 
+def test_scan_taps_dedupes_same_name_keeping_newest(tmp_path, monkeypatch):
+    """A tap can carry a stale root-level copy of a file that's been
+    migrated into Formula/ — both stems are the same. The DB pk is
+    (tap, kind, name) so we must dedupe, keeping the newer mtime."""
+    import os
+    root = tmp_path / "Taps"
+    legacy = root / "u" / "homebrew-t" / "thing.rb"  # old, top-level
+    canonical = root / "u" / "homebrew-t" / "Formula" / "thing.rb"  # new
+    legacy.parent.mkdir(parents=True)
+    canonical.parent.mkdir(parents=True)
+    legacy.write_text('class Thing < Formula\n  version "1.0"\nend\n')
+    canonical.write_text('class Thing < Formula\n  version "2.0"\nend\n')
+    # Force the canonical copy to be the newer file regardless of FS order.
+    os.utime(legacy, (1_700_000_000, 1_700_000_000))
+    os.utime(canonical, (1_800_000_000, 1_800_000_000))
+    monkeypatch.setattr("brew_hop_search.sources.taps._taps_dir", lambda: root)
+
+    from brew_hop_search.sources.taps import scan_taps
+    items = scan_taps()
+    assert len(items) == 1
+    assert items[0]["version"] == "2.0"
+
+
 def test_scan_taps_empty_when_dir_missing(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "brew_hop_search.sources.taps._taps_dir", lambda: tmp_path / "nope"

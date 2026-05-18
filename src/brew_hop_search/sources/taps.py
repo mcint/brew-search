@@ -71,12 +71,19 @@ def parse_rb(path: Path, tap_name: str) -> dict | None:
 
 
 def scan_taps() -> list[dict]:
-    """Scan all taps for .rb formula/cask files."""
+    """Scan all taps for .rb formula/cask files.
+
+    Some taps keep a stale copy at the repo root after migrating into
+    `Formula/` — e.g. `steipete/tap` has both `goplaces.rb` and
+    `Formula/goplaces.rb` at different versions. We dedupe by
+    `(tap, kind, name)` and keep the newest mtime, which is the file
+    the maintainer is actually updating.
+    """
     taps_dir = _taps_dir()
     if not taps_dir.is_dir():
         return []
 
-    results = []
+    by_slug: dict[tuple[str, str, str], dict] = {}
     for user_dir in sorted(taps_dir.iterdir()):
         if not user_dir.is_dir():
             continue
@@ -89,12 +96,15 @@ def scan_taps() -> list[dict]:
                 if "test" in rel.lower() or "spec" in rel.lower():
                     continue
                 parsed = parse_rb(rb_file, tap_name)
-                if parsed:
-                    # Detect formula vs cask from directory structure
-                    is_cask = "/cask" in rel.lower() or rel.lower().startswith("cask")
-                    parsed["kind"] = "cask" if is_cask else "formula"
-                    results.append(parsed)
-    return results
+                if not parsed:
+                    continue
+                is_cask = "/cask" in rel.lower() or rel.lower().startswith("cask")
+                parsed["kind"] = "cask" if is_cask else "formula"
+                key = (parsed["tap"], parsed["kind"], parsed["name"])
+                prev = by_slug.get(key)
+                if prev is None or parsed["modified_at"] > prev["modified_at"]:
+                    by_slug[key] = parsed
+    return list(by_slug.values())
 
 
 def refresh(silent: bool = False) -> bool:
