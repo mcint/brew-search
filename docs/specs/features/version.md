@@ -29,21 +29,42 @@ Detected at runtime:
 
 ### Short (`-V`)
 
-Between releases (dev tree):
+Between releases (dev tree, `uv run` from the working copy):
 
 ```
-brew-hop-search 0.3.6-dev
+brew-hop-search 0.3.7-dev+31
+```
+
+Between releases (built wheel that's ahead of the last tag):
+
+```
+brew-hop-search 0.3.7+31
 ```
 
 At a release commit or from a release install:
 
 ```
-brew-hop-search 0.3.6
+brew-hop-search 0.3.7
 ```
 
-`-V` prints `__version__` verbatim, and `__version__` is the contents of
-the `VERSION` file. One string, one source — no computed markers, no
-string parsing.
+`-V` prints `version_info()`, which is `__version__` (= the VERSION file
+content) decorated with a commit-count suffix:
+
+- `X.Y.Z-dev+N` — live working tree (the `-dev` marks "not built / not
+  shipped"); N = commits since the last tag.
+- `X.Y.Z+N` — built wheel between tags (the `-dev` is dropped because
+  the artifact exists, "could ship"); N from `BUILD_COMMIT_COUNT`
+  baked into `_build_info.py`.
+- `X.Y.Z` — on a tagged commit, or when N == 0.
+
+The `+N` is a PEP 440 *local version label*. `packaging.Version`
+sorts `0.3.7-dev+31 < 0.3.7 < 0.3.7+5 < 0.3.7.post0 < 0.3.8.dev0`,
+matching the natural reading. PyPI strips the local label on upload,
+so tagged releases reach PyPI as plain `0.3.7`.
+
+`__version__` itself stays the raw VERSION file content (one string,
+one file). `version_info()` is the *displayed* version — used in `-V`,
+`-VV`, and User-Agent.
 
 ### Detailed (`-VV`)
 
@@ -51,16 +72,16 @@ Same first line as `-V`; adds an `install` field and the rest of the
 diagnostic card:
 
 ```
-brew-hop-search 0.3.6-dev
-  version     0.3.6-dev
-  commit      ee99406
+brew-hop-search 0.3.7-dev+31
+  version     0.3.7-dev+31
+  commit      8a8b6d0
   install     local
-  user-agent  brew-hop-search/0.3.6-dev
+  user-agent  brew-hop-search/0.3.7-dev+31
   pypi        https://pypi.org/project/brew-hop-search/
   github      https://github.com/mcint/brew-hop-search
 
 recent commits
-  ee99406 Terse -h: add info line for -C / -V / -VV
+  8a8b6d0 Draft specs: cli-vocabulary, output-readability
   ...
 
 pypi  up to date (0.3.6)
@@ -76,10 +97,11 @@ Shows:
 
 | Field | Source |
 |-------|--------|
-| `version` | `__version__` in `__init__.py` |
+| `version` | `version_info()` — `__version__` + commit-count suffix |
 | `commit` | `git rev-parse --short HEAD`; falls back to baked `BUILD_COMMIT` on wheels |
+| `commit count` | `git rev-list --count <last-tag>..HEAD`; falls back to baked `BUILD_COMMIT_COUNT` |
 | `install` | `install_source()` in `__init__.py` |
-| `user-agent` | `user_agent()` — env var > config > default |
+| `user-agent` | `user_agent()` — env var > config > `brew-hop-search/{version_info()}` |
 | `pypi` / `github` / `tap` | Hardcoded URL constants |
 
 ## User-Agent Configuration
@@ -148,11 +170,17 @@ versions, never `-dev`.
 
 ### Resolution table
 
-| Context                   | `VERSION` contents | `__version__` |
-|---------------------------|--------------------|---------------|
-| Between releases          | `0.3.7-dev`        | `0.3.7-dev`   |
-| Release commit / tag      | `0.3.7`            | `0.3.7`       |
-| Installed wheel (release) | `0.3.7`            | `0.3.7`       |
+| Context                            | `VERSION`     | `__version__` | `version_info()` |
+|------------------------------------|---------------|---------------|------------------|
+| Between releases (dev tree)        | `0.3.7-dev`   | `0.3.7-dev`   | `0.3.7-dev+31`   |
+| Between releases (built wheel)     | `0.3.7-dev`   | `0.3.7-dev`   | `0.3.7+31`       |
+| Release commit / tag (any install) | `0.3.7`       | `0.3.7`       | `0.3.7`          |
+
+`__version__` is one string from one file. `version_info()` is the
+*displayed* version, decorated with a commit-count suffix when there
+are commits since the last tag. The "-dev" → "(no suffix)" promotion
+on built wheels is what carries the "built / could ship" vs "live /
+not built" distinction in the rendered string.
 
 ### Commands
 

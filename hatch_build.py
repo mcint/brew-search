@@ -49,6 +49,16 @@ class CustomBuildHook(BuildHookInterface):
         commit_full = _git("rev-parse", "HEAD")
         branch = _git("rev-parse", "--abbrev-ref", "HEAD")
         tag = _git("describe", "--tags", "--exact-match", "HEAD")
+        last_tag = _git("describe", "--tags", "--abbrev=0")
+        # Commits since last tag → drives X.Y.Z-dev+N display version.
+        if last_tag:
+            commit_count_str = _git("rev-list", "--count", f"{last_tag}..HEAD")
+        else:
+            commit_count_str = _git("rev-list", "--count", "HEAD")
+        try:
+            commit_count = int(commit_count_str) if commit_count_str else 0
+        except ValueError:
+            commit_count = 0
         dirty = bool(_git("status", "--porcelain"))
         ts = datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
@@ -61,6 +71,8 @@ class CustomBuildHook(BuildHookInterface):
             f'BUILD_COMMIT_FULL = "{commit_full}"\n'
             f'BUILD_BRANCH = "{branch}"\n'
             f'BUILD_TAG = "{tag}"\n'
+            f'BUILD_LAST_TAG = "{last_tag}"\n'
+            f"BUILD_COMMIT_COUNT = {commit_count}\n"
             f"BUILD_DIRTY = {dirty!r}\n"
             f'BUILD_TIMESTAMP = "{ts}"\n'
         )

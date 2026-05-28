@@ -333,16 +333,17 @@ def _show_history(name: str, as_json: bool = False) -> None:
 
 def _show_version(level: int) -> None:
     from brew_hop_search import (
-        __version__, commit_hash, install_source, user_agent,
+        __version__, commit_hash, install_source, user_agent, version_info,
         PYPI_URL, GITHUB_URL, BREW_TAP_URL,
     )
     src = install_source()
-    print(f"brew-hop-search {__version__}")
+    v = version_info()
+    print(f"brew-hop-search {v}")
     if level < 2:
         return
     if level >= 2:
         h = commit_hash()
-        print(f"  {bold('version')}     {__version__}")
+        print(f"  {bold('version')}     {v}")
         if h:
             print(f"  {bold('commit')}      {h}")
         print(f"  {bold('install')}     {src}")
@@ -377,10 +378,10 @@ def _show_version(level: int) -> None:
                 data = json_mod.loads(r.read())
             latest = data.get("info", {}).get("version", "")
             if latest:
-                cur_v = _parse_version(__version__)
+                cur_v = _parse_version(v)
                 latest_v = _parse_version(latest)
                 if cur_v and latest_v and latest_v > cur_v:
-                    print(f"{bold('pypi')}  {yellow(latest)} available (current: {__version__})")
+                    print(f"{bold('pypi')}  {yellow(latest)} available (current: {v})")
                     print(dim(f"  pip install -U brew-hop-search"))
                 else:
                     print(f"{bold('pypi')}  {green('up to date')} ({latest})")

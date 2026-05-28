@@ -11,8 +11,6 @@ PYPI_URL = "https://pypi.org/project/brew-hop-search/"
 GITHUB_URL = "https://github.com/mcint/brew-hop-search"
 BREW_TAP_URL = ""  # set when a tap is published
 
-_DEFAULT_USER_AGENT = f"brew-hop-search/{__version__}"
-
 
 def user_agent() -> str:
     """User-Agent string. Override via BREW_HOP_SEARCH_UA env var or config."""
@@ -26,7 +24,7 @@ def user_agent() -> str:
             return cfg["user_agent"]
     except Exception:
         pass
-    return _DEFAULT_USER_AGENT
+    return f"brew-hop-search/{version_info()}"
 
 
 def commit_hash() -> str:
@@ -70,9 +68,63 @@ def build_info() -> dict:
         return {}
 
 
+def _commit_count_since_tag() -> int:
+    """Commits between HEAD and the most recent tag.
+
+    Dev tree: live `git describe --tags --abbrev=0` + `rev-list --count`.
+    Wheel install: read BUILD_COMMIT_COUNT baked at build time.
+    Returns 0 on any error (which renders the plain VERSION string).
+    """
+    try:
+        import subprocess
+        pkg_dir = Path(__file__).resolve().parent
+        tag_r = subprocess.run(
+            ["git", "-C", str(pkg_dir), "describe", "--tags", "--abbrev=0"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if tag_r.returncode == 0 and tag_r.stdout.strip():
+            range_arg = f"{tag_r.stdout.strip()}..HEAD"
+        else:
+            # No tags yet — count all commits.
+            range_arg = "HEAD"
+        count_r = subprocess.run(
+            ["git", "-C", str(pkg_dir), "rev-list", "--count", range_arg],
+            capture_output=True, text=True, timeout=5,
+        )
+        if count_r.returncode == 0 and count_r.stdout.strip():
+            return int(count_r.stdout.strip())
+    except Exception:
+        pass
+    try:
+        from brew_hop_search import _build_info
+        return int(getattr(_build_info, "BUILD_COMMIT_COUNT", 0) or 0)
+    except ImportError:
+        return 0
+
+
 def version_info() -> str:
-    """Alias for __version__, kept for callers that want an explicit function."""
-    return __version__
+    """Computed display version. PEP 440-compatible.
+
+    Three shapes (matching the design in scripts/bump-version.sh and
+    docs/specs/drafts/version-string.md):
+
+      X.Y.Z              — tagged release, or count is zero
+      X.Y.Z-dev+N        — dev tree (uv run from working copy), N commits ahead
+      X.Y.Z+N            — built wheel between tags (the `-dev` suffix is
+                           dropped to mark "built / could ship" vs the
+                           working-tree "live, not built" form)
+
+    Local-version `+N` is opaque to PyPI (uploads strip it); fine for
+    debug visibility in -V, --version, and User-Agent.
+    """
+    count = _commit_count_since_tag()
+    if count <= 0:
+        return __version__
+    has_dev = __version__.endswith("-dev")
+    if has_dev and install_source() == "local":
+        return f"{__version__}+{count}"
+    base = __version__[:-len("-dev")] if has_dev else __version__
+    return f"{base}+{count}"
 
 
 def install_source() -> str:
