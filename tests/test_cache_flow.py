@@ -190,6 +190,28 @@ def test_trailing_status_times_out(
     assert "still updating" in err
 
 
+def test_trailing_status_default_wait_is_snappy(
+    fake_tty, clean_tracker, capsys, tmp_path
+):
+    """Default max_wait must be short enough that `bhs -i` returns to the
+    shell promptly even when the bg `brew info` refresh hasn't finished.
+    The bg subprocess keeps running with its own session — we just don't
+    block the foreground on it. (See docs/specs/features/cache-flow.md.)
+    """
+    from brew_hop_search.cache import register_pending_refresh
+    from brew_hop_search.display import trailing_refresh_status
+
+    spath = tmp_path / "never.done"
+    register_pending_refresh("installed", spath)
+
+    start = time.time()
+    trailing_refresh_status(poll=0.01)  # no max_wait override → default
+    elapsed = time.time() - start
+    # Allow generous slack on slow CI; the point is it isn't ~300s.
+    assert elapsed < 5.0, f"trailing wait blocked for {elapsed:.1f}s"
+    assert "still updating" in capsys.readouterr().err
+
+
 def test_trailing_status_skipped_when_not_tty(clean_tracker, capsys, tmp_path,
                                                monkeypatch):
     """Pipelines exit immediately — no blocking on bg refresh."""

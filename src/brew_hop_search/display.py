@@ -64,15 +64,19 @@ def status_line(msg: str, done: bool = False) -> None:
             print(msg, file=sys.stderr)
 
 
-def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 300.0,
+def trailing_refresh_status(*, verbose: int = 1, max_wait: float = 2.0,
                             poll: float = 0.1) -> None:
-    """Block until pending bg refreshes complete (or ^C). TTY+stderr only.
+    """Briefly poll pending bg refreshes (or ^C). TTY+stderr only.
 
     Called at the end of main() — after results are printed and stdout
     flushed — when there are background refreshes in flight. Prints an
-    "updating …" line, polls each sentinel, and overwrites the line with
-    a per-kind ✓/✗ + duration when done. ^C exits immediately and lets
-    the bg processes keep running (they have their own session).
+    "updating …" line, polls each sentinel for up to ``max_wait`` seconds.
+    Fast refreshes (typical for `index`, warm `installed`) finish inside
+    the grace window and get a ✓/✗ + duration line. Slow ones (cold
+    `brew info --json=v2 --installed`) leave a "still updating in
+    background" footer and we return to the shell — the bg process owns
+    its own session and runs to completion regardless. ^C is also
+    treated as "still updating in background".
     """
     from brew_hop_search.cache import pending_refreshes, read_sentinel
     pending = pending_refreshes()

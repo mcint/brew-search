@@ -1,7 +1,8 @@
 # cache-flow
 
 Offline-first read path: respond from cache immediately, refresh in
-background, hold the terminal until the bg refresh finishes (or `^C`).
+background, return to the shell promptly (a brief grace window catches
+fast refreshes; slow ones keep running detached).
 
 ## Purpose
 
@@ -10,8 +11,9 @@ even hours or days later. The cache is the primary source of truth at
 read time; the network is a *post-print* concern.
 
 The shape: `(invoke) → (issue local + remote in parallel) → (print local
-results, flush) → (notify if stale, hold open terminal) → (print update
-duration, notify if remote differs) → (exit)`.
+results, flush) → (brief grace poll: print ✓/✗ line if bg finishes
+quickly, else "still updating in background" footer) → (exit; bg keeps
+running in its own session)`.
 
 ## Input
 
@@ -107,7 +109,10 @@ behavior depends on whether a background refresh is in flight.
 **No bg refresh** (cache fresh enough, `-L`, or refresh skipped): no
 trailing line. Exit immediately.
 
-**Bg refresh in flight**, TTY:
+**Bg refresh in flight**, TTY: we poll the bg sentinel for a short
+grace window (default 2s). Fast refreshes (warm `brew info`, a
+formulae.brew.sh fetch on a good network) finish inside the window;
+slow ones don't, and we return to the shell anyway.
 
 ```
   python  3.13.2  Interpreted, interactive, object-oriented programming language  │ ...
@@ -116,8 +121,8 @@ trailing line. Exit immediately.
 ```
 
 The `# [cache] updating <kinds> …` line is written to stderr in dim
-color. When the bg refresh completes, the line is overwritten in place
-with one of:
+color. When the bg refresh completes inside the grace window, the line
+is overwritten in place with one of:
 
 - `# [cache] index ✓ matches cache  (1.2s)` — refresh ran, results
   unchanged
@@ -126,6 +131,11 @@ with one of:
 - `# [cache] index ✗ refresh failed (network: …)  (8.3s)` — refresh
   errored; cached results were still served
 
+When the grace window expires without a sentinel, the line is
+overwritten with `# [cache] <kinds> still updating in background` and
+the CLI exits — the bg subprocess keeps running in its own session and
+the next invocation picks up the refreshed cache.
+
 `<kinds>` is comma-joined (`index`, `installed`, `outdated`); typically
 just one for search and `-i`, two for `-O` if both `index` and
 `installed` are stale.
@@ -133,6 +143,14 @@ just one for search and `-i`, two for `-O` if both `index` and
 **Bg refresh in flight**, non-TTY: no status line at all. The bg
 process is still launched and detached, but the terminal returns
 immediately so `bhs … | grep …` doesn't block.
+
+**Rationale for the short grace window.** Earlier this spec called for
+holding the terminal open until the bg refresh finished (capped at the
+bg subprocess timeout, e.g. 300s for `brew info`). In practice a cold
+`brew info --json=v2 --installed` can take 30-60s on large installs,
+and the held-open terminal felt like a hang — defeating the
+"results-first" promise. The grace window keeps the fast-path UX
+(inline ✓ when the bg finishes quickly) without the worst-case hold.
 
 ### Differs/matches detection
 
@@ -257,8 +275,9 @@ brew-hop-search -q python | fzf
 - Sentinel mechanism: bg process writes
   `~/.cache/brew-hop-search/.refresh-<kind>.done` (with duration + ok
   flag) at end of run. Foreground process polls for this file until
-  it appears or `^C`. Default poll interval 100ms; cap wait at the
-  bg process's expected timeout (e.g. 300s for installed).
+  it appears, `^C` is pressed, or the grace window expires. Default
+  poll interval 100ms; default grace window 2s (see "trailing status
+  line" above for the rationale).
 - The "results may differ" comparison runs the same `search()` call a
   second time after refresh and diffs the (name, version) tuples. Cost
   is one extra FTS query; negligible.
