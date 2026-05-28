@@ -48,3 +48,5 @@ output:
                         max results [+offset], 0=all (default: 20, or
                         $BREW_HOP_SEARCH_LIMIT)
   -v, --verbose         source tags, cache info (-vv per-source detail)
+  --no-timing           suppress the `# [time]` footer
+                        ($BREW_HOP_SEARCH_NO_TIMING also works)

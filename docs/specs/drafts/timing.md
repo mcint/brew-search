@@ -274,10 +274,28 @@ $ bhs python --no-timing               # explicit off
 
 ## Spec status
 
-**Drafted:** format selection (chosen vs alternatives), suppression
-rules, verbosity ladder, label vocabulary.
+**v1 landed (2026-05-28, this session):**
+- `# [time] <felt>` footer to stderr after every command.
+- `--no-timing` flag + `BREW_HOP_SEARCH_NO_TIMING` env off-switches.
+- Policy table implemented in `timing.should_emit` — `-q`, help,
+  version, `--_bg-refresh` all suppress; non-TTY stderr suppresses
+  at default verbosity but `-v` always shows.
+- Prefix spelling resolved: `# [time]` (the `# [cache] timing …`
+  `-vv` lines stay using "timing" in their *value*; the two
+  prefixes don't collide).
+- `Timer` context manager + module-level `record()` scaffolding
+  in place; not used in the default footer yet.
 
-**Open until implementation:** the `# [time]` vs `# [timing]` prefix
-spelling (`time` is shorter, `timing` is what the existing -vv line
-already calls itself — collision risk). Resolve when the
-`timing.py` module lands.
+**Deferred (separate beads / follow-up commits):**
+- Per-source breakdown at `-v` (`· installed:f 0.012s · fts:formula
+  0.008s`). Plumbing exists (Timer/record); needs callers
+  instrumented in each source module + a render path that consumes
+  `_records`.
+- `(+<dur> refresh)` parenthetical from the bg-refresh sentinel.
+  Coupling: when `display.trailing_refresh_status` reads a
+  completion sentinel within its grace window, that duration
+  should flow into the timing footer's parenthetical.
+- `(refresh failed)` / `(refresh in bg)` variants per spec.
+- `--timing=json` machine-readable mode.
+- `-v=t`, `-v=tt` scoped sub-args (bead bhs-de8).
+- Vocabulary unification for the label set (bead bhs-3g9).

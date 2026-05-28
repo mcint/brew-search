@@ -393,6 +393,17 @@ def _show_version(level: int) -> None:
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main(argv=None):
+    _t0 = time.monotonic()
+    _args_holder: list = []  # populated post-parse so the finally can read it
+    try:
+        return _main_inner(argv, _args_holder)
+    finally:
+        if _args_holder:
+            from brew_hop_search.timing import emit_footer
+            emit_footer(_args_holder[0], time.monotonic() - _t0)
+
+
+def _main_inner(argv, _args_holder):
     ap = argparse.ArgumentParser(
         prog="brew-hop-search",
         usage="%(prog)s [-fcitL] [-VCOH] [-gqT|--json[=MODE]|--csv|--tsv|--sql] [-n N[+OFF]] [--refresh[=DUR]] [query ...]",
@@ -477,6 +488,9 @@ def main(argv=None):
                      help=f"max results [+offset], 0=all (default: {DEFAULT_LIMIT}, or $BREW_HOP_SEARCH_LIMIT)")
     fmt.add_argument("-v", "--verbose", action="count", default=0,
                      help="source tags, cache info (-vv per-source detail)")
+    fmt.add_argument("--no-timing", action="store_true",
+                     help="suppress the `# [time]` footer "
+                          "($BREW_HOP_SEARCH_NO_TIMING also works)")
 
     ap.add_argument("--_bg-refresh", nargs=2, metavar=("KIND", "URL"),
                     help=argparse.SUPPRESS)
@@ -501,6 +515,7 @@ def main(argv=None):
         ["--json=full" if a == "--json" else a for a in raw]
     )
     args = ap.parse_args(normalized)
+    _args_holder.append(args)  # for the timing-footer finally in main()
 
     # Apply user-configured default output format only when no CLI format
     # flag was passed. Priority: CLI flag > env var > TOML config > built-in
